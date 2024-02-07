@@ -58,7 +58,7 @@ class World {
         groundMat.detailMap.texture.uScale = 256;
         groundMat.detailMap.texture.vScale = 256;
         groundMat.detailMap.isEnabled = true;
-        groundMat.detailMap.diffuseBlendLevel = 0.3; // between 0 and 1
+        groundMat.detailMap.diffuseBlendLevel = 0.2; // between 0 and 1
         groundMat.detailMap.bumpLevel = 1; // between 0 and 1
         //groundMat.bumpTexture.level = 0.4;
         groundMat.detailMap.roughnessBlendLevel = 0.5; // between 0 and 1

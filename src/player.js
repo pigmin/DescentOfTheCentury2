@@ -9,11 +9,10 @@ import meshUrl from "../assets/models/player.glb";
 import snowBoardUrl from "../assets/models/intermediate_advanced_snowboard.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
-const USE_FORCES = true;
 let RUNNING_SPEED = 8;
 let JUMP_IMPULSE = 6;
 const PLAYER_HEIGHT = 1.4;
-const PLAYER_RADIUS = 0.8;
+const PLAYER_RADIUS = 0.2;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -28,6 +27,8 @@ class Player {
     gameObject;
     snowboard;
     particleSystemSnow;
+
+    cameraRoot;
 
     //Physic
     playerAggregate;
@@ -60,13 +61,19 @@ class Player {
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
-        this.transform = MeshBuilder.CreateSphere("playerSphere", { diameter: PLAYER_RADIUS/2 } , GlobalManager.scene);
+        this.transform = MeshBuilder.CreateSphere("playerSphere", { diameter: PLAYER_RADIUS*2 } , GlobalManager.scene);
+//        this.transform = MeshBuilder.CreateCapsule("playerSphere", { radius: PLAYER_RADIUS/2, height:2 , orientation: Vector3.Forward()} , GlobalManager.scene);
         this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
 
         this.transform.checkCollisions = true;
         this.transform.collisionGroup = 1;
         this.transform.showBoundingBox = false;
+
+        this.cameraRoot = new TransformNode("cameraRoot");
+        this.cameraRoot.position = new Vector3(0, 0, -2);
+        //this.cameraRoot.rotation = new Vector3(0, Math.PI, 0);
+       
     }
 
     async init() {
@@ -75,19 +82,20 @@ class Player {
         this.gameObject = mesh1.meshes[0];
         this.gameObject.name = "Player";
         this.gameObject.scaling = new Vector3(1, 1, 1);
-        this.gameObject.position = Vector3.Zero();
+        this.gameObject.position = new Vector3(0, -PLAYER_RADIUS, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
         
+        this.cameraRoot.parent = this.gameObject;
         GlobalManager.gameCamera.lockedTarget = this.gameObject;
         GlobalManager.addShadowCaster(this.gameObject, true);
 
         const mesh2 = await SceneLoader.ImportMeshAsync("", "", snowBoardUrl, GlobalManager.scene);
         this.snowboard = mesh2.meshes[0];
         this.snowboard.scaling.scaleInPlace(0.8);
-        this.snowboard.position.set(0, 0.05, 0.125);
-        this.snowboard.name = "snowboard";
         this.snowboard.parent = this.gameObject;
+        this.snowboard.position.set(0, -0.23, 0.03);
+        this.snowboard.name = "snowboard";
         GlobalManager.addShadowCaster(this.snowboard, true);
 
         this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.SPHERE, { mass: 1, friction: 1.0, restitution: 0.1 }, GlobalManager.scene);
@@ -95,21 +103,15 @@ class Player {
         
         //On bloque les rotations avec cette méthode, à vérifier.
         this.playerAggregate.body.setMassProperties({
-            inertia: new Vector3(0, 0.0, 0),
-            centerOfMass: new Vector3(0, 0, 0),
+            inertia: new Vector3(0, 0, 0),  // 0, 0, 0 ...??
+            //centerOfMass: new Vector3(0, 0, 0),
             mass: 1,
             //inertiaOrientation: new Quaternion(0, 0, 0, 0)
         });
 
         //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
-        if (USE_FORCES) {
-            this.playerAggregate.body.setLinearDamping(0.2);
-            this.playerAggregate.body.setAngularDamping(0.2);
-        }
-        else {
-            this.playerAggregate.body.setLinearDamping(0.2);
-            this.playerAggregate.body.setAngularDamping(0.2);
-        }
+        this.playerAggregate.body.setLinearDamping(0.2);
+        this.playerAggregate.body.setAngularDamping(0.2);
 
         this.gameObject.parent = this.transform;
         this.animationsGroup = mesh1.animationGroups;
@@ -120,7 +122,7 @@ class Player {
         this.walkAnim = GlobalManager.scene.getAnimationGroupByName('Walking');
         this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);*/
 
-        this.initParticles();
+        //ithis.initParticles();
     }
 
     initParticles() {
@@ -201,9 +203,9 @@ class Player {
             this.moveDir.setAll(0);            
         }
         else {
-            this.moveDir.x = axis.y * RUNNING_SPEED;
+            this.moveDir.x = axis.x * RUNNING_SPEED;
             this.moveDir.y = 0;
-            this.moveDir.z = -axis.x * RUNNING_SPEED;
+            this.moveDir.z = axis.y * RUNNING_SPEED;
             ret = true;
         }
         return ret;
@@ -224,10 +226,6 @@ class Player {
                 this.speedZ = this.moveDir.z;
             }
             else {
-               if (!USE_FORCES) {
-                    this.speedX = Scalar.MoveTowards(this.speedX, 0, delta/3);
-                    this.speedZ = Scalar.MoveTowards(this.speedZ, 0, delta/3);
-               }
             }
         }
         else {
@@ -237,35 +235,34 @@ class Player {
                 this.speedZ = this.moveDir.z/1.5;
             }
             else {
-                if (!USE_FORCES) {
-                    this.speedX = Scalar.MoveTowards(this.speedX, 0, delta/3);
-                    this.speedZ = Scalar.MoveTowards(this.speedZ, 0, delta/3);
-               }
             }
         }
 
 
         if (InputController.actions["Space"] && this.bOnGround) {
-            SoundManager.playSound(0);
+            //SoundManager.playSound(0);
             this.playerAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
         }
         
         //On applique tout
-        if (USE_FORCES) {
-            this.moveDir.set(this.speedX, 0, this.speedZ);
-            this.playerAggregate.body.applyForce(this.moveDir, Vector3.Zero());
-        }
-        else {
-            //Gravity  + deplacement + saut
-            this.moveDir.set(this.speedX, this.playerAggregate.body.getLinearVelocity().y, this.speedZ);
-            this.playerAggregate.body.setLinearVelocity(this.moveDir);
-        }        
+        let fwd = this.getForwardVector(GlobalManager.gameCamera);
+        let right = this.getRightVector(GlobalManager.gameCamera);
+        let correctedVertical = fwd.scaleInPlace(this.speedZ);
+        let correctedHorizontal = right.scaleInPlace(this.speedX);
+        
+        //movement based off of camera's view
+        this.moveDir = correctedHorizontal.addInPlace(correctedVertical);
+        //this.moveDir = new Vector3((move).normalize().x, 0, (move).normalize().z);    
+        this.moveDir.y = 0;
+
+        console.log(this.moveDir.x, this.moveDir.y, this.moveDir.z);
+        this.playerAggregate.body.applyForce(this.moveDir, Vector3.Zero());
         
         //Animations
         if (this.bWalking) {
             //Orientation
             let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
-            this.gameObject.lookAt(directionXZ.normalize());
+            this.gameObject.lookAt(this.moveDir.normalize());
 
             if (!bWasWalking) {
                 this.skatingAnim.start(true, 1.0, this.skatingAnim.from, this.skatingAnim.to, false);
@@ -277,6 +274,20 @@ class Player {
                 //this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
             }
         }
+    }
+
+    getForwardVector(_mesh) {
+        _mesh.computeWorldMatrix(true);
+        var forward_local = new Vector3(0, 0, 1);
+        const worldMatrix = _mesh.getWorldMatrix();
+        return Vector3.TransformNormal(forward_local, worldMatrix);
+    }
+
+    getRightVector(_mesh) {
+        _mesh.computeWorldMatrix(true);
+        var forward_local = new Vector3(1, 0, 0);
+        const worldMatrix = _mesh.getWorldMatrix();
+        return Vector3.TransformNormal(forward_local, worldMatrix);
     }
 
 }
