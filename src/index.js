@@ -1,24 +1,26 @@
-import { Engine, FreeCamera, HemisphericLight, MeshBuilder, Scene, SceneLoader, Vector3 } from "@babylonjs/core";
-import { Inspector } from '@babylonjs/inspector';
+import { Engine } from "@babylonjs/core";
+
 import Game from "./game";
 
-
-let engine;
 let canvas;
-let game;
+let engine;
 
-window.onload = () => {
+const babylonInit = async () => {
+    
     canvas = document.getElementById("renderCanvas");
-    engine = new Engine(canvas, true);
+    engine = new Engine(canvas, false, {
+            adaptToDeviceRatio: true,
+    });
+    
     window.addEventListener("resize", function () {
         engine.resize();
     });
-
-    game = new Game(engine, canvas);
-    game.init().then( () => {
-        game.start();
-    })
+};
 
 
-}
+
+babylonInit().then(() => {
+    const game = new Game(canvas, engine);
+    game.start();    
+});
 
