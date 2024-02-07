@@ -4,10 +4,6 @@ import HavokPhysics from "@babylonjs/havok";
 
 
 const NB_DECORS = 30;
-const SPEED_Z = 40;
-const SPEED_X = 10;
-const SKIING_VOLUME_MIN = 0.5;
-const SKIING_VOLUME_MAX = 2.5;
 const MAIN_SCENE_ROT_X = 0;
 
 const PLAYER_Z_BASE = 14;
@@ -18,20 +14,14 @@ const CAMERA_START_POS = new Vector3(-100, 200, 122);
 import envfileUrl from "../assets/env/environment.env";
 
 
-import terrainMeshUrl from "../assets/models/Snow Scene Output 1024.glb";
-import terrainDetailTexUrl from "../assets/textures/d00.png";
 
-import meshUrl from "../assets/models/player.glb";
-import snowBoardUrl from "../assets/models/intermediate_advanced_snowboard.glb";
-
-import decor1Url from "../assets/models/handpainted_pine_tree.glb";
-
-import flareParticleUrl from "../assets/textures/flare.png";
 import { InputController } from "./inputcontroller";
 import { GlobalManager, States } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
 
 import GameUI from "./gameUI";
+import Player from "./player";
+import World from "./world";
 
 class Game {
 
@@ -48,11 +38,8 @@ class Game {
 
     bInspector = false;
 
-    particleSystemSnow;
     player;
-    playerSphere;
     decors = [];
-    snowboard;
 
     aie;
     music;
@@ -124,6 +111,10 @@ class Game {
 
     updateGame(delta) {
 
+        this.world.update(delta);
+        
+        this.player.update(delta);
+
     }
 
     async getInitializedHavok() {
@@ -144,6 +135,13 @@ class Game {
         InputController.init();
         await SoundManager.init();
         await this.createScene();
+
+        this.player = new Player(PLAYER_START.x, PLAYER_START.y, PLAYER_START.z);
+        await this.player.init();
+
+        this.world = new World(0, 0, 0);
+        await this.world.init();
+
     }
 
     async createScene() {
@@ -225,97 +223,7 @@ class Game {
         /*        var mb = new MotionBlurPostProcess('mb', GlobalManager.scene, 1.0, GlobalManager.gameCamera);
                 mb.motionStrength = 0.5;*/
 
-        // Our built-in 'ground' shape.
-        const groundRes = await SceneLoader.ImportMeshAsync("", "", terrainMeshUrl, GlobalManager.scene);
-        this.groundMesh = groundRes.meshes[1];
-        this.groundMesh.setParent(null);
-        groundRes.meshes[0].dispose();
-
-        this.groundMesh.name = "Terrain";
-        this.groundMesh.position = new Vector3(0, 0, 0);
-        let min = this.groundMesh.getBoundingInfo().boundingBox.minimumWorld;
-        let max = this.groundMesh.getBoundingInfo().boundingBox.maximumWorld;
-        this.groundMesh.scaling.scaleInPlace(.1);
-        let deltaX = (max.x - min.x) / 20;
-        let deltaZ = (max.z - min.z) / 20;
-        let deltaY = (max.y - min.y) / 20;
-        this.groundMesh.position.set(deltaX, -deltaY, deltaZ);
-        this.groundMesh.receiveShadows = true;
-        GlobalManager.addShadowCaster(this.groundMesh, true);
-
-        let groundMat = this.groundMesh.material;
-        groundMat.environmentIntensity = 1;
-        groundMat.ambientColor = new Color4(0, 0, 0, 0);
-        groundMat.ambientTexture.level = 1;
-        groundMat.ambientTextureStrength = 0.1;
-
-        groundMat.detailMap.texture = new Texture(terrainDetailTexUrl, GlobalManager.scene);
-        groundMat.detailMap.texture.uScale = 256;
-        groundMat.detailMap.texture.vScale = 256;
-        groundMat.detailMap.isEnabled = true;
-        groundMat.detailMap.diffuseBlendLevel = 0.3; // between 0 and 1
-        groundMat.detailMap.bumpLevel = 1; // between 0 and 1
-        //groundMat.bumpTexture.level = 0.4;
-        groundMat.detailMap.roughnessBlendLevel = 0.5; // between 0 and 1
-
-        const groundAggregate = new PhysicsAggregate(this.groundMesh, PhysicsShapeType.MESH, { mass: 0, friction: 0.1, restitution: 0.3 }, GlobalManager.scene);
-        groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
-
-        let pivot = new TransformNode("world", GlobalManager.scene);
-
-
-
-        let res = await SceneLoader.ImportMeshAsync("", "", meshUrl, GlobalManager.scene);
-
-        // Set the target of the camera to the first imported mesh
-        this.player = res.meshes[0];
-        //mb.excludeSkinnedMesh(this.player);
-
-        GlobalManager.gameCamera.lockedTarget = this.player;
-
-        this.player.name = "Player";
-        this.player.scaling = new Vector3(1, 1, 1);
-        this.player.position = Vector3.Zero();
-        this.player.rotation = new Vector3(0, 0, 0);
-        //        res.animationGroups[0].stop();
-        //        res.animationGroups[1].play(true);
-        GlobalManager.addShadowCaster(this.player, true);
-
-        res = await SceneLoader.ImportMeshAsync("", "", snowBoardUrl, GlobalManager.scene);
-        this.snowboard = res.meshes[0];
-        this.snowboard.scaling.scaleInPlace(0.8);
-        this.snowboard.position.set(0, 0.05, 0.125);
-        this.snowboard.name = "snowboard";
-        this.snowboard.parent = this.player;
-
-        GlobalManager.addShadowCaster(this.snowboard, true);
-
-        this.playerSphere = MeshBuilder.CreateSphere("playerCap", { diameter: 0.4 });
-        /*this.playerSphere = MeshBuilder.CreateSphere("playerCap", { diameter: 2});
-        this.playerSphere.scaling.y = 0.2;
-        this.playerSphere.scaling.x = 0.2;
-        this.playerSphere.bakeCurrentTransformIntoVertices();
-        this.playerSphere.scaling.y = 1;*/
-        this.playerSphere.position = PLAYER_START.clone();
-        this.playerSphere.checkCollisions = true;
-        this.playerSphere.collisionGroup = 1;
-        this.playerSphere.visibility = 0;
-        this.playerSphere.showBoundingBox = false;
-
-        this.playerAggregate = new PhysicsAggregate(this.playerSphere, PhysicsShapeType.SPHERE, { mass: 1, friction: 0.2, restitution: 0.2 }, GlobalManager.scene);
-        this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-        //On bloque les rotations avec cette méthode, à vérifier.
-        this.playerAggregate.body.setMassProperties({
-            inertia: new Vector3(0, 0.4, 0),
-            centerOfMass: new Vector3(0, 0, 0),
-            mass: 1,
-            //inertiaOrientation: new Quaternion(0, 0, 0, 0)
-        });
-
-        this.player.parent = this.playerSphere;
-
-
+        
         let debugBox = MeshBuilder.CreateBox("debugBox", {size:5});
         debugBox.receiveShadows = true;
         GlobalManager.addShadowCaster(debugBox);
@@ -327,10 +235,10 @@ class Game {
         debugPlane.position = new Vector3(123, -66, -59);
 
         //let decorModele = MeshBuilder.CreateBox("decor", { width: 0.5, height: 1, depth: 1 }, GlobalManager.scene);
-        res = await SceneLoader.ImportMeshAsync("", "", decor1Url, GlobalManager.scene);
+        /*
+        let res = await SceneLoader.ImportMeshAsync("", "", decor1Url, GlobalManager.scene);
         let decorModele = res.meshes[0];
 
-        /*
                 for (let i = 0; i < NB_DECORS; i++) {
                     let decor = decorModele.clone("");
                     decor.normalizeToUnitCube();
@@ -370,49 +278,7 @@ class Game {
                 }
                 decorModele.dispose();
         */
-        // Create a particle system
-        this.particleSystemSnow = new ParticleSystem("particles", 2000, GlobalManager.scene);
-        this.particleSystemSnow.gravity = new Vector3(0, -9.81, 0);
-        //Texture of each particle
-        this.particleSystemSnow.particleTexture = new Texture(flareParticleUrl, GlobalManager.scene);
-        // Where the particles come from
-        this.particleSystemSnow.emitter = new TransformNode("spawnsnow", GlobalManager.scene);
-        this.particleSystemSnow.emitter.parent = this.player;
-        this.particleSystemSnow.emitter.position.z = -1;
-        this.particleSystemSnow.minEmitBox = new Vector3(-.2, -.1, 1.5); // Bottom Left Front
-        this.particleSystemSnow.maxEmitBox = new Vector3(.2, 0, -.2); // Top Right Back
 
-        // Colors of all particles
-        this.particleSystemSnow.color1 = new Color4(0.8, 0.8, 1.0, 1.0);
-        this.particleSystemSnow.color2 = new Color4(0.7, 0.7, 1.0, 1.0);
-        this.particleSystemSnow.colorDead = new Color4(0.2, 0.2, 0.4, 0.0);
-
-        // Size of each particle (random between...
-        this.particleSystemSnow.minSize = 0.025;
-        this.particleSystemSnow.maxSize = 0.35;
-
-        // Life time of each particle (random between...
-        this.particleSystemSnow.minLifeTime = 0.1;
-        this.particleSystemSnow.maxLifeTime = 0.6;
-
-        // Emission rate
-        this.particleSystemSnow.emitRate = 4000;
-
-        // Direction of each particle after it has been emitted
-        this.particleSystemSnow.direction1 = new Vector3(-3, 0, -SPEED_Z / 2);
-        this.particleSystemSnow.direction2 = new Vector3(3, 8, -SPEED_Z);
-
-        // Angular speed, in radians
-        this.particleSystemSnow.minAngularSpeed = 0;
-        this.particleSystemSnow.maxAngularSpeed = Math.PI / 4;
-
-        // Speed
-        this.particleSystemSnow.minEmitPower = .1;
-        this.particleSystemSnow.maxEmitPower = 2;
-        this.particleSystemSnow.updateSpeed = 0.0075;
-
-        // Start the particle system
-        this.particleSystemSnow.start();
 
         this.gameUI = new GameUI();
         await this.gameUI.init();
