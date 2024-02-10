@@ -1,4 +1,4 @@
-import { ArcFollowCamera, ArcRotateCamera, BoundingInfo, Color3, Color4, CubeTexture, DefaultRenderingPipeline, DirectionalLight, FlyCamera, FollowCamera, FreeCamera, HavokPlugin, HemisphericLight, KeyboardEventTypes, MeshBuilder, MotionBlurPostProcess, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Quaternion, Scalar, Scene, SceneLoader, ShadowGenerator, Sound, StandardMaterial, TargetCamera, Texture, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { ArcFollowCamera, ArcRotateCamera, BoundingInfo, Color3, Color4, CubeTexture, DefaultRenderingPipeline, DirectionalLight, FlyCamera, FollowCamera, FreeCamera, GizmoManager, HavokPlugin, HemisphericLight, KeyboardEventTypes, MeshBuilder, MotionBlurPostProcess, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Quaternion, Scalar, Scene, SceneLoader, ShadowGenerator, Sound, StandardMaterial, TargetCamera, Texture, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { Inspector } from "@babylonjs/inspector";
 import HavokPhysics from "@babylonjs/havok";
 
@@ -8,8 +8,8 @@ const MAIN_SCENE_ROT_X = 0;
 
 const PLAYER_Z_BASE = 14;
 
-const PLAYER_START = new Vector3(-85, 20, 83);
-const CAMERA_START_POS = new Vector3(-100, 200, 122);
+const PLAYER_START = new Vector3(0, -50, 0);
+const CAMERA_START_POS = new Vector3(-100, 100, 122);
 
 import envfileUrl from "../assets/env/environment.env";
 
@@ -160,12 +160,16 @@ class Game {
         GlobalManager.scene.fogStart = SPAWN_POS_Z - 30;
         GlobalManager.scene.fogEnd = SPAWN_POS_Z;
         GlobalManager.scene.fogColor = new Color3(0.6, 0.6, 0.85);*/
+/*
+        GlobalManager.gizmoManager = new GizmoManager(GlobalManager.scene);
+        GlobalManager.gizmoManager.positionGizmoEnabled = true;
+        GlobalManager.gizmoManager.rotationGizmoEnabled = true;*/
 
         // This creates and positions a free camera (non-mesh)
         GlobalManager.gameCamera = new FollowCamera2("camera1", new Vector3(0, 20, -30), GlobalManager.scene);
         //GlobalManager.gameCamera.fov = 0.8;
-        GlobalManager.gameCamera.heightOffset = 8;
-        GlobalManager.gameCamera.radius = 24;
+        GlobalManager.gameCamera.heightOffset = 3;
+        GlobalManager.gameCamera.radius = -15;
         GlobalManager.gameCamera.maxCameraSpeed = 10;
         GlobalManager.gameCamera.cameraAcceleration = 0.05;
         GlobalManager.gameCamera.rotationOffset = 0;
@@ -177,7 +181,7 @@ class Game {
         // GlobalManager.gameCamera.setTarget(PLAYER_START.clone());
 
 
-        GlobalManager.debugCamera = new FreeCamera("debugCam", new Vector3(141, -50, -68), GlobalManager.scene);
+        GlobalManager.debugCamera = new FreeCamera("debugCam", new Vector3(0, 8, -10), GlobalManager.scene);
         GlobalManager.debugCamera.maxZ = 10000;
         GlobalManager.debugCamera.inputs.addMouseWheel();
         // This attaches the camera to the canvas

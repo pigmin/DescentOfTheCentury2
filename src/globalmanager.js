@@ -35,9 +35,10 @@ class GlobalManager {
     scene;
     gameCamera;
     debugCamera;
+    gizmoManager;
 
     gameState = States.STATE_NONE;
-bPause = false;
+    bPause = false;
 
     shadowGenerators = [];
 

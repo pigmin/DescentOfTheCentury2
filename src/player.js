@@ -1,15 +1,16 @@
-import { Color3, Color4, Matrix, Mesh, MeshBuilder, ParticleSystem, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Quaternion, Ray, RayHelper, Scalar, SceneLoader, Texture, TransformNode, Vector3 } from "@babylonjs/core";
+import { Axis, Color3, Color4, Matrix, Mesh, MeshBuilder, ParticleSystem, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Quaternion, Ray, RayHelper, Scalar, SceneLoader, Space, Texture, TransformNode, Vector3, Plane, StandardMaterial, DynamicTexture, AxesViewer } from "@babylonjs/core";
 
 
 import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
 import { InputController } from "./inputcontroller";
 
-import meshUrl from "../assets/models/player.glb";
-import snowBoardUrl from "../assets/models/intermediate_advanced_snowboard.glb";
+import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
-let RUNNING_SPEED = 8;
+const USE_FORCES = false;
+let RUNNING_SPEED = 12;
+let AIR_SPEED = 9;
 let JUMP_IMPULSE = 6;
 const PLAYER_HEIGHT = 1.4;
 const PLAYER_RADIUS = 0.2;
@@ -25,8 +26,11 @@ class Player {
     transform;
     //Mesh
     gameObject;
-    snowboard;
     particleSystemSnow;
+
+    maxSlopeAngle = 0.8;
+    currentSlope = 0;
+    slopeHit = Vector3.Zero();
 
     cameraRoot;
 
@@ -42,27 +46,28 @@ class Player {
     bJumping = false;
 
     idleAnim;
-    skatingAnim;
     runAnim;
     walkAnim;
 
     moveDir = new Vector3(0, 0, 0);
+    direction = new Vector3();
+
+    moveDirLines;
 
     x = 0.0;
     y = 0.0;
     z = 0.0;
 
-    speedX = 0.0;
-    speedY = 0.0;
-    speedZ = 0.0;
+    speed = 0;
+
 
     constructor(x, y, z) {
 
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
-        this.transform = MeshBuilder.CreateSphere("playerSphere", { diameter: PLAYER_RADIUS*2 } , GlobalManager.scene);
-//        this.transform = MeshBuilder.CreateCapsule("playerSphere", { radius: PLAYER_RADIUS/2, height:2 , orientation: Vector3.Forward()} , GlobalManager.scene);
+        //this.transform = MeshBuilder.CreateSphere("playerSphere", { diameter: PLAYER_RADIUS * 2 }, GlobalManager.scene);
+        this.transform = new MeshBuilder.CreateCapsule("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
         this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
 
@@ -73,7 +78,14 @@ class Player {
         this.cameraRoot = new TransformNode("cameraRoot");
         this.cameraRoot.position = new Vector3(0, 0, -2);
         //this.cameraRoot.rotation = new Vector3(0, Math.PI, 0);
-       
+
+        this.moveDirLines = new AxesViewer(GlobalManager.scene, 2);
+        this.moveDirLines.xAxis.parent = this.transform;
+        this.moveDirLines.yAxis.parent = this.transform;
+        this.moveDirLines.zAxis.parent = this.transform;
+        //showAxes(5, this.transform, GlobalManager.scene);
+
+
     }
 
     async init() {
@@ -82,47 +94,90 @@ class Player {
         this.gameObject = mesh1.meshes[0];
         this.gameObject.name = "Player";
         this.gameObject.scaling = new Vector3(1, 1, 1);
-        this.gameObject.position = new Vector3(0, -PLAYER_RADIUS, 0);
+        this.gameObject.position = new Vector3(0, -PLAYER_HEIGHT / 2, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
-        
+
         this.cameraRoot.parent = this.gameObject;
         GlobalManager.gameCamera.lockedTarget = this.gameObject;
         GlobalManager.addShadowCaster(this.gameObject, true);
 
-        const mesh2 = await SceneLoader.ImportMeshAsync("", "", snowBoardUrl, GlobalManager.scene);
-        this.snowboard = mesh2.meshes[0];
-        this.snowboard.scaling.scaleInPlace(0.8);
-        this.snowboard.parent = this.gameObject;
-        this.snowboard.position.set(0, -0.23, 0.03);
-        this.snowboard.name = "snowboard";
-        GlobalManager.addShadowCaster(this.snowboard, true);
-
-        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.SPHERE, { mass: 1, friction: 1.0, restitution: 0.1 }, GlobalManager.scene);
+        //this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.SPHERE, { mass: 1, friction: 1.0, restitution: 0.1 }, GlobalManager.scene);
+        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: 1, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
         this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-        
+
         //On bloque les rotations avec cette méthode, à vérifier.
         this.playerAggregate.body.setMassProperties({
             inertia: new Vector3(0, 0, 0),  // 0, 0, 0 ...??
-            //centerOfMass: new Vector3(0, 0, 0),
+            centerOfMass: new Vector3(0, PLAYER_HEIGHT / 2, 0),
             mass: 1,
             //inertiaOrientation: new Quaternion(0, 0, 0, 0)
         });
 
         //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
-        this.playerAggregate.body.setLinearDamping(0.2);
-        this.playerAggregate.body.setAngularDamping(0.2);
+        if (USE_FORCES) {
+            this.playerAggregate.body.setLinearDamping(0.0);
+            this.playerAggregate.body.setAngularDamping(0.0);
+        }
+        else {
+            this.playerAggregate.body.setLinearDamping(0);
+            this.playerAggregate.body.setAngularDamping(0.0);
+        }
 
         this.gameObject.parent = this.transform;
         this.animationsGroup = mesh1.animationGroups;
         this.animationsGroup[0].stop();
-        this.skatingAnim = GlobalManager.scene.getAnimationGroupByName('Skating'); 
-        /*this.idleAnim = GlobalManager.scene.getAnimationGroupByName('Idle');
+        this.idleAnim = GlobalManager.scene.getAnimationGroupByName('Idle');
         this.runAnim = GlobalManager.scene.getAnimationGroupByName('Running');
         this.walkAnim = GlobalManager.scene.getAnimationGroupByName('Walking');
-        this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);*/
+        this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
 
         //ithis.initParticles();
+        this.test();
+    }
+
+    test() {
+        window.addEventListener('dblclick', () => {
+            var pickResult = GlobalManager.scene.pick(GlobalManager.scene.pointerX, GlobalManager.scene.pointerY);
+
+            var mat = new StandardMaterial('mat1', GlobalManager.scene);
+            mat.diffuseColor = new Color3(1, 0, 0);
+
+            var sphere = MeshBuilder.CreateSphere(
+                'sphere1',
+                { diameter: 2, segments: 16 },
+                GlobalManager.scene
+            );
+            sphere.material = mat;
+            sphere.position.y = 3;
+
+            var cube = MeshBuilder.CreateBox(
+                'cube',
+                { size: 0.5, height: 3 },
+                GlobalManager.scene
+            );
+            cube.position = new Vector3(0, 1.5, 0);
+            cube.material = mat;
+
+            var mesh = Mesh.MergeMeshes([sphere, cube]);
+
+            mesh.position = pickResult.pickedPoint;
+
+            // !!!!!!!!!!!!!!!!!!!!!
+            // ROTATION MUST BE HERE
+            // !!!!!!!!!!!!!!!!!!!!!
+
+            var axis1 = pickResult.getNormal();
+            var axis2 = Vector3.Up();
+            var axis3 = Vector3.Zero();
+            var start = GlobalManager.gameCamera.position;
+
+            Vector3.CrossToRef(start, axis1, axis2);
+            Vector3.CrossToRef(axis2, axis1, axis3);
+            var tmpVec = Vector3.RotationFromAxis(axis3.negate(), axis1, axis2);
+            //var quat = Quaternion.RotationYawPitchRoll(tmpVec.y, tmpVec.x, tmpVec.z);
+            mesh.rotation = tmpVec;
+        });
     }
 
     initParticles() {
@@ -168,46 +223,26 @@ class Player {
         this.particleSystemSnow.updateSpeed = 0.0075;
 
         // Start the particle system
-        this.particleSystemSnow.start();        
+        this.particleSystemSnow.start();
     }
 
-    checkGround() {
-        let ret = false;
-
-        var rayOrigin = this.transform.absolutePosition;
-        var ray1Dir = Vector3.Down();
-        var ray1Len = (PLAYER_HEIGHT / 2) + 0.1;
-        var ray1Dest = rayOrigin.add(ray1Dir.scale(ray1Len));
-
-        const raycastResult = GlobalManager.scene.getPhysicsEngine().raycast(rayOrigin, ray1Dest, PhysMasks.PHYS_MASK_GROUND);
-        if (raycastResult.hasHit) {
-            //console.log("Collision at ", raycastResult.hitPointWorld);
-            if (!this.bOnGround)
-                console.log("Grounded");
-            ret = true;
-        }
-/*
-        var ray1 = new Ray(rayOrigin, ray1Dir, ray1Len);
-        var ray1Helper = new RayHelper(ray1);
-        ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
-*/
-
-        return ret;
-    }
 
     inputMove() {
         let ret = false;
         const axis = InputController.getAxisVectorP1();
 
-        if (axis.length() < 0.01) {
-            this.moveDir.setAll(0);            
+        if (Math.abs(axis.length()) < 0.01) {
+            this.moveDir.setAll(0);
         }
         else {
-            this.moveDir.x = axis.x * RUNNING_SPEED;
+            this.moveDir.x = axis.x;
             this.moveDir.y = 0;
-            this.moveDir.z = axis.y * RUNNING_SPEED;
+            this.moveDir.z = axis.y;
             ret = true;
         }
+        this.speed = 1;//dthis.moveDir.length();
+        
+        this.moveDir.normalize();
         return ret;
     }
     //Pour le moment on passe les events clavier ici, on utilisera un InputManager plus tard
@@ -217,63 +252,139 @@ class Player {
 
         let bWasWalking = this.bWalking;
         this.bWalking = this.inputMove();
+        //On applique tout suivant l'orientation de la camera
+        this.applyCameraDirectionToMoveDirection();
+        //On regarde le slope etc.
+        this.calculateSlope();
+        this.applySlopeOnMove();
 
-
+        
         if (this.bOnGround) {
             //Inputs
-            if (!this.moveDir.equals(Vector3.Zero())) {
-                this.speedX = this.moveDir.x;
-                this.speedZ = this.moveDir.z;
-            }
-            else {
-            }
+            this.moveDir.scaleInPlace(this.speed * RUNNING_SPEED);
         }
         else {
             //Inputs
-            if (!this.moveDir.equals(Vector3.Zero())) {
-                this.speedX = this.moveDir.x/1.5;
-                this.speedZ = this.moveDir.z/1.5;
-            }
-            else {
-            }
+            this.moveDir.scaleInPlace(this.speed * AIR_SPEED);
         }
 
-
+        
+        //this.gameObject.setDirection(this.direction);
+        this.gameObject.lookAt(this.direction);
+        
         if (InputController.actions["Space"] && this.bOnGround) {
             //SoundManager.playSound(0);
             this.playerAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
         }
-        
-        //On applique tout
-        let fwd = this.getForwardVector(GlobalManager.gameCamera);
-        let right = this.getRightVector(GlobalManager.gameCamera);
-        let correctedVertical = fwd.scaleInPlace(this.speedZ);
-        let correctedHorizontal = right.scaleInPlace(this.speedX);
-        
-        //movement based off of camera's view
-        this.moveDir = correctedHorizontal.addInPlace(correctedVertical);
-        //this.moveDir = new Vector3((move).normalize().x, 0, (move).normalize().z);    
-        this.moveDir.y = 0;
+        //console.log(this.moveDir.x, this.moveDir.y, this.moveDir.z);
+        if (USE_FORCES) {
+            this.playerAggregate.body.applyForce(this.moveDir, Vector3.Zero());
+        }
+        else {
+            this.moveDir.set(this.moveDir.x, this.playerAggregate.body.getLinearVelocity().y, this.moveDir.z);
+            this.playerAggregate.body.setLinearVelocity(this.moveDir);
+        }
 
-        console.log(this.moveDir.x, this.moveDir.y, this.moveDir.z);
-        this.playerAggregate.body.applyForce(this.moveDir, Vector3.Zero());
-        
+
+        this.updateAnimations(bWasWalking);
+
+    }
+
+    updateAnimations(bWasWalking) {
+
         //Animations
         if (this.bWalking) {
-            //Orientation
-            let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
-            this.gameObject.lookAt(this.moveDir.normalize());
 
             if (!bWasWalking) {
-                this.skatingAnim.start(true, 1.0, this.skatingAnim.from, this.skatingAnim.to, false);
+                this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
             }
         }
         else {
             if (bWasWalking) {
-                this.skatingAnim.stop();
-                //this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
+                this.runAnim.stop();
+                this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
             }
         }
+    }
+
+
+    checkGround() {
+        let ret = false;
+
+        var rayOrigin = this.transform.absolutePosition;
+
+        var ray1Dir = Vector3.Down();
+        var ray1Len = PLAYER_HEIGHT/2 + 0.3;
+        var ray1Dest = rayOrigin.add(ray1Dir.scale(ray1Len));
+
+        this.slopeHit = GlobalManager.scene.getPhysicsEngine().raycast(rayOrigin, ray1Dest, PhysMasks.PHYS_MASK_GROUND);
+        if (this.slopeHit.hasHit) {
+            //console.log("Collision at ", this.slopeHit.hitPointWorld);
+
+            if (!this.bOnGround) {
+                console.log("Grounded");
+
+            }
+
+            ret = true;
+        }
+        /*
+                var ray1 = new Ray(rayOrigin, ray1Dir, ray1Len);
+                var ray1Helper = new RayHelper(ray1);
+                ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
+        */
+
+        return ret;
+    }
+
+    calculateSlope() {
+        this.currentSlope = 0;
+        this.onSlope = false;
+        if (this.slopeHit.hasHit) {
+            let ortho = Vector3.Cross(Vector3.UpReadOnly, this.slopeHit.hitNormal);
+            this.currentSlope = Vector3.GetAngleBetweenVectors(Vector3.UpReadOnly, this.slopeHit.hitNormal, ortho);
+           // let ortho2 = Vector3.Cross(ortho, this.slopeHit.hitNormal);
+
+            this.onSlope = (this.currentSlope < this.maxSlopeAngle && this.currentSlope != 0);
+
+            console.log(this.currentSlope);
+
+        }
+        //ALTERNATIVE / let angle3 = -Math.acos(Vector3.Dot(Vector3.UpReadOnly,  this.slopeHit.hitNormal)); 
+
+        //let angle4 = -Math.asin(Vector3.Dot(Vector3.RightReadOnly,  this.slopeHit.hitNormal)); 
+    }
+    applySlopeOnMove() {
+
+        if (this.onSlope) {
+
+            let planeNormal = this.slopeHit.hitNormal.normalize();
+            // Calcul du produit scalaire entre le vecteur à projeter et la normale du plan
+            let dotProduct = Vector3.Dot(this.moveDir, planeNormal);
+
+            // Calcul du vecteur perpendiculaire
+            let perpendicularVector = planeNormal.scale(dotProduct);
+
+            // Projection du vecteur sur le plan
+            let projectedVector = this.moveDir.subtract(perpendicularVector);
+
+
+            this.moveDirLines.update(Vector3.Zero(), this.moveDir, projectedVector, planeNormal);
+
+            // projectedVector est maintenant la projection de vectorToProject sur le plan
+            this.moveDir = projectedVector;
+
+        }
+        else {
+            this.moveDirLines.update(Vector3.Zero(), this.moveDir, this.moveDir, this.transform.up);
+        }
+    }
+
+    getUpVector(_mesh) {
+        _mesh.computeWorldMatrix(true);
+        var forward_local = new Vector3(0, 1, 0);
+        const worldMatrix = _mesh.getWorldMatrix();
+        return Vector3.TransformNormal(forward_local, worldMatrix);
     }
 
     getForwardVector(_mesh) {
@@ -290,6 +401,76 @@ class Player {
         return Vector3.TransformNormal(forward_local, worldMatrix);
     }
 
+    verticalSlope(v) {
+        return Math.atan(Math.abs(v.y / Math.sqrt(v.x * v.x + v.z * v.z)));
+    }
+
+    applyCameraDirectionToMoveDirection() {
+
+        if (this.moveDir.length() != 0) {
+            let forwardCamera = this.getForwardVector(GlobalManager.scene.activeCamera);
+            let rightCamera = this.getRightVector(GlobalManager.scene.activeCamera);
+            forwardCamera.scaleInPlace(this.moveDir.z);
+            rightCamera.scaleInPlace(this.moveDir.x);
+
+            //movement based off of camera's view
+            this.moveDir = rightCamera.addInPlace(forwardCamera);
+            //this.moveDir = new Vector3((move).normalize().x, 0, (move).normalize().z);    
+            this.moveDir.y = 0;
+            this.moveDir.normalize();
+            this.direction.copyFrom(this.moveDir);
+        }
+    }
+
 }
+
+function showAxes(size, mesh, scene) {
+    var makeTextPlane = function(text, color, size) {
+        var dynamicTexture = new DynamicTexture("DynamicTexture", 50, scene, true);
+        dynamicTexture.hasAlpha = true;
+        dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color , "transparent", true);
+        var plane = new MeshBuilder.CreatePlane("TextPlane", { size: size, updatable: true}, scene);
+        plane.material = new StandardMaterial("TextPlaneMaterial", scene);
+        plane.material.backFaceCulling = false;
+        plane.material.specularColor = new Color3(0, 0, 0);
+        plane.material.diffuseTexture = dynamicTexture;
+        return plane;
+    };
+
+    var axisX = Mesh.CreateLines("axisX", [ 
+      Vector3.Zero(), new Vector3(size, 0, 0), new Vector3(size * 0.95, 0.05 * size, 0), 
+      new Vector3(size, 0, 0), new Vector3(size * 0.95, -0.05 * size, 0)
+      ], scene);
+    axisX.color = new Color3(1, 0, 0);
+    var xChar = makeTextPlane("X", "red", size / 10);
+    xChar.position = new Vector3(0.9 * size, -0.05 * size, 0);
+
+    var axisY = Mesh.CreateLines("axisY", [
+        Vector3.Zero(), new Vector3(0, size, 0), new Vector3( -0.05 * size, size * 0.95, 0), 
+        new Vector3(0, size, 0), new Vector3(0.05 * size, size * 0.95, 0)
+        ], scene);
+    axisY.color = new Color3(0, 1, 0);
+    var yChar = makeTextPlane("Y", "green", size / 10);
+    yChar.position = new Vector3(0, 0.9 * size, -0.05 * size);
+
+    var axisZ = Mesh.CreateLines("axisZ", [
+        Vector3.Zero(), new Vector3(0, 0, size), new Vector3( 0 , -0.05 * size, size * 0.95),
+        new Vector3(0, 0, size), new Vector3(0, 0.05 * size, size * 0.95)
+        ], scene);
+    axisZ.color = new Color3(0, 0, 1);
+    var zChar = makeTextPlane("Z", "blue", size / 10);
+    zChar.position = new Vector3(0, 0.05 * size, 0.9 * size);
+
+    var axisParent = new TransformNode("axisParent");
+    axisX.parent = axisY.parent = axisZ.parent = xChar.parent = yChar.parent = zChar.parent = axisParent;
+
+    // If the mesh is provided, position the axes at the mesh's position
+    if(mesh){
+        axisParent.parent = mesh;
+
+        axisParent.position = Vector3.Zero();
+    }
+}
+
 
 export default Player;

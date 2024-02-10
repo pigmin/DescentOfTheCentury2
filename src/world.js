@@ -1,9 +1,10 @@
-import { ActionManager, Color3, Color4, Engine, ExecuteCodeAction, Material, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, Texture, TransformNode, Vector3 } from "@babylonjs/core";
+import { ActionManager, Axis, Color3, Color4, Engine, ExecuteCodeAction, Material, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, Scalar, SceneLoader, StandardMaterial, Texture, TransformNode, Vector3 } from "@babylonjs/core";
 import { GlobalManager, PhysMasks, States } from "./globalmanager";
 
 import terrainMeshUrl from "../assets/models/Snow Scene Output 1024.glb";
 import terrainDetailTexUrl from "../assets/textures/d00.png";
 
+import terrainMeshTexture from "../assets/textures/Snow Bitmap Output 1024.png";
 
 import decor1Url from "../assets/models/handpainted_pine_tree.glb";
 
@@ -31,6 +32,7 @@ class World {
 
     async init() {
 
+        
         const result = await SceneLoader.ImportMeshAsync("", "", terrainMeshUrl, GlobalManager.scene);
         this.gameObject = result.meshes[1];
         this.gameObject.setParent(null);
@@ -40,10 +42,10 @@ class World {
         this.gameObject.position = new Vector3(0, 0, 0);
         let min = this.gameObject.getBoundingInfo().boundingBox.minimumWorld;
         let max = this.gameObject.getBoundingInfo().boundingBox.maximumWorld;
-        this.gameObject.scaling.scaleInPlace(.1);
-        let deltaX = (max.x - min.x) / 20;
-        let deltaZ = (max.z - min.z) / 20;
-        let deltaY = (max.y - min.y) / 20;
+        this.gameObject.scaling.scaleInPlace(.2);
+        let deltaX = (max.x - min.x) / 10;
+        let deltaZ = (max.z - min.z) / 10;
+        let deltaY = (max.y - min.y) / 10;
         this.gameObject.position.set(deltaX, -deltaY, deltaZ);
         this.gameObject.receiveShadows = true;
         GlobalManager.addShadowCaster(this.gameObject, true);
@@ -62,11 +64,53 @@ class World {
         groundMat.detailMap.bumpLevel = 1; // between 0 and 1
         //groundMat.bumpTexture.level = 0.4;
         groundMat.detailMap.roughnessBlendLevel = 0.5; // between 0 and 1
-
-        const groundAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.MESH, { mass: 0, friction: 0.1, restitution: 0.3 }, GlobalManager.scene);
+/*
+        this.gameObject = MeshBuilder.CreateGround("groundDebug", {width:256, height:256, subdivisions:32}, GlobalManager.scene);
+        //this.gameObject.rotation = new Vector3(Math.PI/2, 0, 0);
+        this.gameObject.material = new StandardMaterial("groundmat", GlobalManager.scene);
+        this.gameObject.material.diffuseTexture = new Texture(terrainMeshTexture);
+*/
+        const groundAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
         groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
         groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
         
+        let debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
+        debugBox.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugBox);
+        debugBox.position = new Vector3(3, 0, 1);
+        debugBox.rotation = new Vector3(0, -1, Math.PI/5);
+        let debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
+                
+        debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
+        debugBox.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugBox);
+        debugBox.position = new Vector3(3, -1, 4);
+        debugBox.rotation = new Vector3(0, Math.PI/2, Math.PI/4);
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
+                        
+        debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
+        debugBox.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugBox);
+        debugBox.position = new Vector3(8, -1, 8);
+        debugBox.rotation = new Vector3(0, Math.PI/3, Math.PI/5);
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+                        
+        debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
+        debugBox.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugBox);
+        debugBox.position = new Vector3(16, -1, 8);
+        debugBox.rotation = new Vector3(0, Scalar.RandomRange(-Math.PI, Math.PI), Math.PI/6);
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
 /*  
 
         this.zoneA = MeshBuilder.CreateBox("zoneA", { width: 4.2, height: 0.2, depth: 2.0 }, GlobalManager.scene);
