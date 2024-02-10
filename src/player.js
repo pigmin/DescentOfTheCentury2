@@ -13,7 +13,7 @@ let RUNNING_SPEED = 12;
 let AIR_SPEED = 9;
 let JUMP_IMPULSE = 6;
 const PLAYER_HEIGHT = 1.4;
-const PLAYER_RADIUS = 0.2;
+const PLAYER_RADIUS = 0.3;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -76,8 +76,6 @@ class Player {
         this.transform.showBoundingBox = false;
 
         this.cameraRoot = new TransformNode("cameraRoot");
-        this.cameraRoot.position = new Vector3(0, 0, -2);
-        //this.cameraRoot.rotation = new Vector3(0, Math.PI, 0);
 
         this.moveDirLines = new AxesViewer(GlobalManager.scene, 2);
         this.moveDirLines.xAxis.parent = this.transform;
@@ -98,7 +96,9 @@ class Player {
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
 
-        this.cameraRoot.parent = this.gameObject;
+        this.cameraRoot.setParent(this.gameObject);
+        this.cameraRoot.position = new Vector3(0, 0, -2);
+
         GlobalManager.gameCamera.lockedTarget = this.gameObject;
         GlobalManager.addShadowCaster(this.gameObject, true);
 

@@ -8,7 +8,7 @@ const MAIN_SCENE_ROT_X = 0;
 
 const PLAYER_Z_BASE = 14;
 
-const PLAYER_START = new Vector3(0, -50, 0);
+const PLAYER_START = new Vector3(50, -36, 4);
 const CAMERA_START_POS = new Vector3(-100, 100, 122);
 
 import envfileUrl from "../assets/env/environment.env";
@@ -218,12 +218,12 @@ class Game {
         // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 2;
 
-        let shadowGenerator = new ShadowGenerator(2048, light);
+        let shadowGenerator = new ShadowGenerator(4096, light);
         shadowGenerator.useBlurCloseExponentialShadowMap  = true;
-        shadowGenerator.bias = 0.0001;
-        shadowGenerator.normalBias = 0.1;
+        shadowGenerator.bias = 0.001;
+        shadowGenerator.normalBias = 0.25;
         shadowGenerator.frustumEdgeFalloff = 1.0;
-        shadowGenerator.setDarkness(0.2);
+        shadowGenerator.setDarkness(0.0);
         GlobalManager.addShadowGenerator(shadowGenerator);
 
 

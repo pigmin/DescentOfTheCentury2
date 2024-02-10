@@ -8,6 +8,7 @@ import terrainMeshTexture from "../assets/textures/Snow Bitmap Output 1024.png";
 
 import decor1Url from "../assets/models/handpainted_pine_tree.glb";
 
+import debugTexUrl from "../assets/textures/GridEmissive.png";
 
 class World {
 
@@ -42,10 +43,10 @@ class World {
         this.gameObject.position = new Vector3(0, 0, 0);
         let min = this.gameObject.getBoundingInfo().boundingBox.minimumWorld;
         let max = this.gameObject.getBoundingInfo().boundingBox.maximumWorld;
-        this.gameObject.scaling.scaleInPlace(.2);
-        let deltaX = (max.x - min.x) / 10;
-        let deltaZ = (max.z - min.z) / 10;
-        let deltaY = (max.y - min.y) / 10;
+        this.gameObject.scaling.scaleInPlace(.05);
+        let deltaX = (max.x - min.x) / 40;
+        let deltaZ = (max.z - min.z) / 40;
+        let deltaY = (max.y - min.y) / 40;
         this.gameObject.position.set(deltaX, -deltaY, deltaZ);
         this.gameObject.receiveShadows = true;
         GlobalManager.addShadowCaster(this.gameObject, true);
@@ -55,61 +56,84 @@ class World {
         groundMat.ambientColor = new Color4(0, 0, 0, 0);
         groundMat.ambientTexture.level = 1;
         groundMat.ambientTextureStrength = 0.1;
+        groundMat.roughness = 1;
+        groundMat.metallic = 0;
+
 
         groundMat.detailMap.texture = new Texture(terrainDetailTexUrl, GlobalManager.scene);
-        groundMat.detailMap.texture.uScale = 256;
-        groundMat.detailMap.texture.vScale = 256;
+        groundMat.detailMap.texture.uScale = 512;
+        groundMat.detailMap.texture.vScale = 512;
         groundMat.detailMap.isEnabled = true;
-        groundMat.detailMap.diffuseBlendLevel = 0.2; // between 0 and 1
+        groundMat.detailMap.diffuseBlendLevel = 0.35; // between 0 and 1
         groundMat.detailMap.bumpLevel = 1; // between 0 and 1
         //groundMat.bumpTexture.level = 0.4;
         groundMat.detailMap.roughnessBlendLevel = 0.5; // between 0 and 1
-/*
-        this.gameObject = MeshBuilder.CreateGround("groundDebug", {width:256, height:256, subdivisions:32}, GlobalManager.scene);
-        //this.gameObject.rotation = new Vector3(Math.PI/2, 0, 0);
-        this.gameObject.material = new StandardMaterial("groundmat", GlobalManager.scene);
-        this.gameObject.material.diffuseTexture = new Texture(terrainMeshTexture);
-*/
-        const groundAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+
+        const groundAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
         groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
         groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
         
+        let debugMat = new StandardMaterial("debugMat", GlobalManager.scene);
+        debugMat.emissiveTexture = new Texture(debugTexUrl);
+        debugMat.emissiveColor = new Color3(0, 0.1, 0.4);
+        debugMat.diffuseColor = new Color3(0.57, 0.57, 0.7);
+        debugMat.emissiveTexture.level = 2;
+
+        let debugPlane = MeshBuilder.CreateBox("groundDebug", {width:40, height:0.5, depth:40, subdivisions:8}, GlobalManager.scene);
+        debugPlane.receiveShadows = true;
+        debugPlane.material = debugMat;
+        debugPlane.material.Color3 = new Color3(1, 0, 0);
+        debugPlane.position = new Vector3(50, -38.0, 0);
+        let debugAggregate = new PhysicsAggregate(debugPlane, PhysicsShapeType.BOX, { mass: 0, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
         let debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
         debugBox.receiveShadows = true;
         GlobalManager.addShadowCaster(debugBox);
-        debugBox.position = new Vector3(3, 0, 1);
-        debugBox.rotation = new Vector3(0, -1, Math.PI/5);
-        let debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
-        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
-        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+        debugBox.position = new Vector3(38, -37.25, 3);
+        debugBox.scaling = new Vector3(1, 0.1, 2);
+        debugBox.rotation = new Vector3(0, 0, 0);
+        debugBox.material = debugMat.clone();
+        debugBox.material.diffuseColor = new Color3(0.8, 0, 0, 0.5);
+        debugBox.material.emissiveColor = new Color3(0.2, 0, 0, 0.5);
+
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.BOX, { mass: 50, friction: 0.5, restitution: 0.8 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+        
 
                 
         debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
         debugBox.receiveShadows = true;
         GlobalManager.addShadowCaster(debugBox);
-        debugBox.position = new Vector3(3, -1, 4);
+        debugBox.position = new Vector3(23, -31, 4);
         debugBox.rotation = new Vector3(0, Math.PI/2, Math.PI/4);
-        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
-        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
-        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+        debugBox.material = debugMat;
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.BOX, { mass: 15, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+        
 
                         
-        debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
-        debugBox.receiveShadows = true;
-        GlobalManager.addShadowCaster(debugBox);
-        debugBox.position = new Vector3(8, -1, 8);
-        debugBox.rotation = new Vector3(0, Math.PI/3, Math.PI/5);
-        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
-        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
-        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+        let debugSphere = MeshBuilder.CreateSphere("debugSphere", {diameter:5});
+        debugSphere.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugSphere);
+        debugSphere.position = new Vector3(18, -31, 8);
+        debugSphere.rotation = new Vector3(0, Math.PI/3, Math.PI/5);
+        debugSphere.material = debugMat;
+        debugAggregate = new PhysicsAggregate(debugSphere, PhysicsShapeType.SPHERE, { mass: 15, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+        
                         
-        debugBox = MeshBuilder.CreateBox("debugBox2", {size:5});
+        debugBox = MeshBuilder.CreateBox("debugBox2", {size:1});
+        debugBox.scaling = new Vector3(20, 0.2, 5);
         debugBox.receiveShadows = true;
         GlobalManager.addShadowCaster(debugBox);
-        debugBox.position = new Vector3(16, -1, 8);
+        debugBox.position = new Vector3(46, -37, 8);
         debugBox.rotation = new Vector3(0, Scalar.RandomRange(-Math.PI, Math.PI), Math.PI/6);
-        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
-        debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        debugBox.material = debugMat.clone();
+
+        debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.MESH, { mass: 15, friction: 0.5, restitution: 0.0 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
         debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
 /*  
 
