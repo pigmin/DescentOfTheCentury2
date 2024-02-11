@@ -79,12 +79,14 @@ class World {
         debugMat.diffuseColor = new Color3(0.57, 0.57, 0.7);
         debugMat.emissiveTexture.level = 2;
 
-        let debugPlane = MeshBuilder.CreateBox("debugPlane", {width:40, height:0.5, depth:40, subdivisions:8}, GlobalManager.scene);
+        let debugPlane = MeshBuilder.CreateBox("debugPlane", {width:48, height:0.5, depth:48, subdivisions:16}, GlobalManager.scene);
         debugPlane.receiveShadows = true;
-        debugPlane.material = debugMat;
+        debugPlane.material = debugMat.clone();
+        debugPlane.material.emissiveTexture.uScale = 16;
+        debugPlane.material.emissiveTexture.vScale = 16;
         debugPlane.material.Color3 = new Color3(1, 0, 0);
         debugPlane.position = new Vector3(50, -38.0, 0);
-        let debugAggregate = new PhysicsAggregate(debugPlane, PhysicsShapeType.BOX, { mass: 0, friction: 0.5, restitution: 0.2 }, GlobalManager.scene);
+        let debugAggregate = new PhysicsAggregate(debugPlane, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.2 }, GlobalManager.scene);
         debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
         debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
 
@@ -95,24 +97,36 @@ class World {
         debugBouncingBox.scaling = new Vector3(1, 0.1, 2);
         debugBouncingBox.rotation = new Vector3(0, 0, 0);
         debugBouncingBox.material = debugMat.clone();
-        debugBouncingBox.material.diffuseColor = new Color3(0.8, 0, 0, 0.5);
-        debugBouncingBox.material.emissiveColor = new Color3(0.2, 0, 0, 0.5);
+        debugBouncingBox.material.diffuseColor = new Color4(0.8, 0, 0, 0.5);
+        debugBouncingBox.material.emissiveColor = new Color4(0.2, 0, 0, 0.5);
 
         debugAggregate = new PhysicsAggregate(debugBouncingBox, PhysicsShapeType.BOX, { mass: 50, friction: 0.5, restitution: 0.8 }, GlobalManager.scene);
         debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
         
 
         for (let i = 0; i < 10; i++) {
-            let debugBox = MeshBuilder.CreateBox("debugBox"+i, {size:Scalar.RandomRange(0.2, 1.5)});
+            let debugBox = MeshBuilder.CreateBox("debugBox"+i, {size:Scalar.RandomRange(0.25, 2.0)});
             debugBox.receiveShadows = true;
             GlobalManager.addShadowCaster(debugBox);
             debugBox.position = new Vector3(Scalar.RandomRange(25, 70), Scalar.RandomRange(60, -30), Scalar.RandomRange(-20, 20));
             debugBox.rotation = new Vector3(0, Scalar.RandomRange(-Math.PI/2, Math.PI/2), Scalar.RandomRange(-Math.PI/4, Math.PI/4));
-            debugBox.material = debugMat;
+            debugBox.material = debugMat.clone();
+            debugBox.material.diffuseColor = new Color4(0.0, 0.8, 0, 1);
+            debugBox.material.emissiveColor = new Color4(0.0, 0.4, 0, 1);
             debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.BOX, { mass: 15, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
             debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
         }
 
+        for (let i = 0; i < 10; i++) {
+            let debugBox = MeshBuilder.CreateBox("debugBoxS"+i, {size:1});
+            debugBox.receiveShadows = true;
+            GlobalManager.addShadowCaster(debugBox);
+            debugBox.position = new Vector3(Scalar.RandomRange(25, 70), -37.65, Scalar.RandomRange(-20, 20));
+            debugBox.scaling = new Vector3(Scalar.RandomRange(0.5, 1.5), 0.5, 5);
+            debugBox.material = debugMat;
+            debugAggregate = new PhysicsAggregate(debugBox, PhysicsShapeType.BOX, { mass: 0, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+            debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        }
                         
         let debugSphere = MeshBuilder.CreateSphere("debugSphere", {diameter:5});
         debugSphere.receiveShadows = true;

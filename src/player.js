@@ -9,11 +9,16 @@ import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
 const USE_FORCES = false;
-let RUNNING_SPEED = 12;
-let AIR_SPEED = 9;
-let JUMP_IMPULSE = 6;
-const PLAYER_HEIGHT = 1.4;
-const PLAYER_RADIUS = 0.3;
+let RUNNING_SPEED = 18;
+let AIR_SPEED = 15;
+let JUMP_IMPULSE = 12;
+const PLAYER_HEIGHT = 1.0;
+const PLAYER_RADIUS = 0.35;
+const RIDE_HEIGHT = 1.0;
+const RAY_DOWN_LENGTH = RIDE_HEIGHT + 0.5;
+const MESH_PLAYER_HEIGHT = RIDE_HEIGHT-0.05;
+const RIDE_SPRING_STRENGTH = 120;
+const RIDE_SPRING_DAMPER = 12;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -30,7 +35,7 @@ class Player {
 
     maxSlopeAngle = 0.8;
     currentSlope = 0;
-    slopeHit = Vector3.Zero();
+    rayHit = new PhysicsRaycastResult();
 
     cameraRoot;
 
@@ -48,6 +53,8 @@ class Player {
     idleAnim;
     runAnim;
     walkAnim;
+
+    ray1Helper = null;
 
     moveDir = new Vector3(0, 0, 0);
     direction = new Vector3();
@@ -71,6 +78,15 @@ class Player {
         this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
 
+        /*let debugRideHeight = new MeshBuilder.CreateSphere("debugCap", { diameter: RIDE_HEIGHT }, GlobalManager.scene);
+        debugRideHeight.visibility = 0.2;
+        var mat = new StandardMaterial("mat");
+        mat.emissiveColor = Color3.White();
+        mat.wireframe = true;
+        debugRideHeight.material = mat;
+        debugRideHeight.setParent(this.transform);
+        debugRideHeight.position = new Vector3(0, -RIDE_HEIGHT/2, 0);
+*/
         this.transform.checkCollisions = true;
         this.transform.collisionGroup = 1;
         this.transform.showBoundingBox = false;
@@ -92,7 +108,9 @@ class Player {
         this.gameObject = mesh1.meshes[0];
         this.gameObject.name = "Player";
         this.gameObject.scaling = new Vector3(1, 1, 1);
-        this.gameObject.position = new Vector3(0, -PLAYER_HEIGHT / 2, 0);
+        this.gameObject.position = new Vector3(0, -MESH_PLAYER_HEIGHT , 0);
+//        mesh1.meshes[0].visibility = 0.2;
+//        mesh1.meshes[1].visibility = 0.2;
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
 
@@ -254,6 +272,8 @@ class Player {
         this.bWalking = this.inputMove();
         //On applique tout suivant l'orientation de la camera
         this.applyCameraDirectionToMoveDirection();
+
+        this.applyFloatForce();
         //On regarde le slope etc.
         this.calculateSlope();
         this.applySlopeOnMove();
@@ -274,11 +294,11 @@ class Player {
         
         if (InputController.actions["Space"] && this.bOnGround) {
             //SoundManager.playSound(0);
-            this.playerAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
+            this.playerAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.ZeroReadOnly);
         }
         //console.log(this.moveDir.x, this.moveDir.y, this.moveDir.z);
         if (USE_FORCES) {
-            this.playerAggregate.body.applyForce(this.moveDir, Vector3.Zero());
+            this.playerAggregate.body.applyForce(this.moveDir, Vector3.ZeroReadOnly);
         }
         else {
             this.moveDir.set(this.moveDir.x, this.playerAggregate.body.getLinearVelocity().y, this.moveDir.z);
@@ -288,6 +308,42 @@ class Player {
 
         this.updateAnimations(bWasWalking);
 
+    }
+
+    applyFloatForce() {
+        if (this.rayHit.hasHit) {
+            let vel = this.playerAggregate.body.getLinearVelocity();
+            let rayDir = Vector3.Down();
+            let otherVel = Vector3.Zero();
+            let hitBody = this.rayHit.body;
+            if (hitBody != null) {
+                hitBody.getLinearVelocityToRef(otherVel);
+            }
+            let rayDirVel = Vector3.Dot(rayDir, vel);
+            let otherDirVel = Vector3.Dot(rayDir, otherVel);
+            let relVel = rayDirVel - otherDirVel;
+            let x = this.rayHit.hitDistance - RIDE_HEIGHT;
+
+            let springForce = (x * RIDE_SPRING_STRENGTH) - (relVel * RIDE_SPRING_DAMPER);
+            
+            this.playerAggregate.body.applyForce(rayDir.scale(springForce), Vector3.ZeroReadOnly);
+
+            var ray1 = new Ray(this.transform.position, rayDir, springForce);
+            if (this.ray1Helper == null)
+                this.ray1Helper = new RayHelper(ray1);
+            else 
+                this.ray1Helper.ray = ray1;
+
+            this.ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
+
+            //console.log(this.rayHit.hitDistance, springForce);
+
+            if (hitBody != null)
+            {
+                console.log(this.rayHit);
+                hitBody.applyForce(rayDir.scale(-springForce), Vector3.Zero());
+            }
+        }
     }
 
     updateAnimations(bWasWalking) {
@@ -314,12 +370,13 @@ class Player {
         var rayOrigin = this.transform.absolutePosition;
 
         var ray1Dir = Vector3.Down();
-        var ray1Len = PLAYER_HEIGHT/2 + 0.3;
+        var ray1Len = RAY_DOWN_LENGTH;
         var ray1Dest = rayOrigin.add(ray1Dir.scale(ray1Len));
 
-        this.slopeHit = GlobalManager.scene.getPhysicsEngine().raycast(rayOrigin, ray1Dest, PhysMasks.PHYS_MASK_GROUND);
-        if (this.slopeHit.hasHit) {
-            //console.log("Collision at ", this.slopeHit.hitPointWorld);
+        this.rayHit.reset();
+        GlobalManager.scene.getPhysicsEngine().raycastToRef(rayOrigin, ray1Dest, this.rayHit, {collideWith: PhysMasks.PHYS_MASK_ALL});
+        if (this.rayHit.hasHit) {
+            //console.log("Collision at ", this.rayHit.hitPointWorld);
 
             if (!this.bOnGround) {
                 console.log("Grounded");
@@ -328,6 +385,8 @@ class Player {
 
             ret = true;
         }
+
+        
         /*
                 var ray1 = new Ray(rayOrigin, ray1Dir, ray1Len);
                 var ray1Helper = new RayHelper(ray1);
@@ -340,25 +399,25 @@ class Player {
     calculateSlope() {
         this.currentSlope = 0;
         this.onSlope = false;
-        if (this.slopeHit.hasHit) {
-            let ortho = Vector3.Cross(Vector3.UpReadOnly, this.slopeHit.hitNormal);
-            this.currentSlope = Vector3.GetAngleBetweenVectors(Vector3.UpReadOnly, this.slopeHit.hitNormal, ortho);
-           // let ortho2 = Vector3.Cross(ortho, this.slopeHit.hitNormal);
+        if (this.rayHit.hasHit) {
+            let ortho = Vector3.Cross(Vector3.UpReadOnly, this.rayHit.hitNormal);
+            this.currentSlope = Vector3.GetAngleBetweenVectors(Vector3.UpReadOnly, this.rayHit.hitNormal, ortho);
+           // let ortho2 = Vector3.Cross(ortho, this.rayHit.hitNormal);
 
-            this.onSlope = (this.currentSlope < this.maxSlopeAngle && this.currentSlope != 0);
+            this.onSlope = (this.currentSlope != 0);
 
-            console.log(this.currentSlope);
+           // console.log(this.currentSlope);
 
         }
-        //ALTERNATIVE / let angle3 = -Math.acos(Vector3.Dot(Vector3.UpReadOnly,  this.slopeHit.hitNormal)); 
+        //ALTERNATIVE / let angle3 = -Math.acos(Vector3.Dot(Vector3.UpReadOnly,  this.rayHit.hitNormal)); 
 
-        //let angle4 = -Math.asin(Vector3.Dot(Vector3.RightReadOnly,  this.slopeHit.hitNormal)); 
+        //let angle4 = -Math.asin(Vector3.Dot(Vector3.RightReadOnly,  this.rayHit.hitNormal)); 
     }
     applySlopeOnMove() {
 
         if (this.onSlope) {
 
-            let planeNormal = this.slopeHit.hitNormal.normalize();
+            let planeNormal = this.rayHit.hitNormal.normalize();
             // Calcul du produit scalaire entre le vecteur à projeter et la normale du plan
             let dotProduct = Vector3.Dot(this.moveDir, planeNormal);
 
@@ -369,14 +428,14 @@ class Player {
             let projectedVector = this.moveDir.subtract(perpendicularVector);
 
 
-            this.moveDirLines.update(Vector3.Zero(), this.moveDir, projectedVector, planeNormal);
+            this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, projectedVector, planeNormal);
 
             // projectedVector est maintenant la projection de vectorToProject sur le plan
             this.moveDir = projectedVector;
 
         }
         else {
-            this.moveDirLines.update(Vector3.Zero(), this.moveDir, this.moveDir, this.transform.up);
+            this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, this.moveDir, this.transform.up);
         }
     }
 

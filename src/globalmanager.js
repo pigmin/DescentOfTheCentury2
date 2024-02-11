@@ -26,6 +26,8 @@ export const PhysMasks = Object.freeze({
     PHYS_MASK_CURLING : 4,
     PHYS_MASK_NET : 8,
     PHYS_MASK_ENNEMIES : 16,
+
+    PHYS_MASK_ALL: 0xffffffff
 });
 
 class GlobalManager {

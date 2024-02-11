@@ -150,7 +150,6 @@ class Game {
         const hk = new HavokPlugin(true, this.havokInstance);
         // enable physics in the scene with a gravity
         GlobalManager.scene.enablePhysics(new Vector3(0, -9.81, 0), hk);
-        GlobalManager.scene.collisionsEnabled = true;
         GlobalManager.scene.gravity = new Vector3(0, -0.15, 0);
 
         GlobalManager.scene.clearColor = new Color3(0.7, 0.7, 0.95);
@@ -174,7 +173,9 @@ class Game {
         GlobalManager.gameCamera.cameraAcceleration = 0.05;
         GlobalManager.gameCamera.rotationOffset = 0;
         GlobalManager.gameCamera.maxZ = 10000;
-        
+        GlobalManager.gameCamera.wheelPrecision = 0.5; //Mouse wheel speed
+        GlobalManager.gameCamera.attachControl(this.canvas, true);
+
         //GlobalManager.gameCamera.fov = 0.8;
 
         // This targets the camera to scene origin
@@ -232,15 +233,7 @@ class Game {
                 mb.motionStrength = 0.5;*/
 
         
-        let debugBox = MeshBuilder.CreateBox("debugBox", {size:5});
-        debugBox.receiveShadows = true;
-        GlobalManager.addShadowCaster(debugBox);
-        debugBox.position = new Vector3(123, -63, -59);
 
-        let debugPlane = MeshBuilder.CreatePlane("debugPlane", {size:20}, GlobalManager.scene);
-        debugPlane.receiveShadows = true;
-        debugPlane.rotation.set(Math.PI/2, 0, 0);
-        debugPlane.position = new Vector3(123, -66, -59);
 
         //let decorModele = MeshBuilder.CreateBox("decor", { width: 0.5, height: 1, depth: 1 }, GlobalManager.scene);
         /*
