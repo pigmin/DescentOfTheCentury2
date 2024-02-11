@@ -9,7 +9,7 @@ const MAIN_SCENE_ROT_X = 0;
 const PLAYER_Z_BASE = 14;
 
 const PLAYER_START = new Vector3(50, -36, 4);
-const CAMERA_START_POS = new Vector3(-100, 100, 122);
+const CAMERA_START_POS = new Vector3(50, -20, -14);
 
 import envfileUrl from "../assets/env/environment.env";
 
@@ -165,7 +165,7 @@ class Game {
         GlobalManager.gizmoManager.rotationGizmoEnabled = true;*/
 
         // This creates and positions a free camera (non-mesh)
-        GlobalManager.gameCamera = new FollowCamera2("camera1", new Vector3(0, 20, -30), GlobalManager.scene);
+        GlobalManager.gameCamera = new FollowCamera2("camera1", CAMERA_START_POS, GlobalManager.scene);
         //GlobalManager.gameCamera.fov = 0.8;
         GlobalManager.gameCamera.heightOffset = 3;
         GlobalManager.gameCamera.radius = -15;
@@ -175,11 +175,6 @@ class Game {
         GlobalManager.gameCamera.maxZ = 10000;
         GlobalManager.gameCamera.wheelPrecision = 0.5; //Mouse wheel speed
         GlobalManager.gameCamera.attachControl(this.canvas, true);
-
-        //GlobalManager.gameCamera.fov = 0.8;
-
-        // This targets the camera to scene origin
-        // GlobalManager.gameCamera.setTarget(PLAYER_START.clone());
 
 
         GlobalManager.debugCamera = new FreeCamera("debugCam", new Vector3(0, 8, -10), GlobalManager.scene);
