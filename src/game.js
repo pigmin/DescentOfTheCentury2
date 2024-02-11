@@ -149,7 +149,7 @@ class Game {
 
         const hk = new HavokPlugin(true, this.havokInstance);
         // enable physics in the scene with a gravity
-        GlobalManager.scene.enablePhysics(new Vector3(0, -9.81, 0), hk);
+        GlobalManager.scene.enablePhysics(GlobalManager.gravityVector, hk);
         GlobalManager.scene.gravity = new Vector3(0, -0.15, 0);
 
         GlobalManager.scene.clearColor = new Color3(0.7, 0.7, 0.95);
@@ -168,13 +168,19 @@ class Game {
         GlobalManager.gameCamera = new FollowCamera2("camera1", CAMERA_START_POS, GlobalManager.scene);
         //GlobalManager.gameCamera.fov = 0.8;
         GlobalManager.gameCamera.heightOffset = 3;
+        GlobalManager.gameCamera.lowerHeightOffsetLimit = 1;
+        GlobalManager.gameCamera.upperHeightOffsetLimit = 10;
         GlobalManager.gameCamera.radius = -15;
-        GlobalManager.gameCamera.maxCameraSpeed = 10;
-        GlobalManager.gameCamera.cameraAcceleration = 0.05;
+        GlobalManager.gameCamera.lowerRadiusLimit = -25;
+        GlobalManager.gameCamera.upperRadiusLimit = -4;
+        GlobalManager.gameCamera.maxCameraSpeed = 20;
+        GlobalManager.gameCamera.cameraAcceleration = 0.1;
         GlobalManager.gameCamera.rotationOffset = 0;
         GlobalManager.gameCamera.maxZ = 10000;
         GlobalManager.gameCamera.wheelPrecision = 0.5; //Mouse wheel speed
         GlobalManager.gameCamera.attachControl(this.canvas, true);
+        GlobalManager.gameCamera.inputs.attached.pointers.angularSensibilityX = 1.5;
+        GlobalManager.gameCamera.inputs.attached.pointers.angularSensibilityY = 1.5;
 
 
         GlobalManager.debugCamera = new FreeCamera("debugCam", new Vector3(0, 8, -10), GlobalManager.scene);

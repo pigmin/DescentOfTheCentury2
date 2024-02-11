@@ -1,3 +1,4 @@
+import { Vector3 } from "@babylonjs/core";
 import { SoundManager } from "./soundmanager";
 
 export const States = Object.freeze({
@@ -38,6 +39,7 @@ class GlobalManager {
     gameCamera;
     debugCamera;
     gizmoManager;
+    gravityVector = new Vector3(0, -9.81, 0)
 
     gameState = States.STATE_NONE;
     bPause = false;

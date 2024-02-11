@@ -8,20 +8,21 @@ import { InputController } from "./inputcontroller";
 import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
+const DEBUG_FORCES = true;
 const USE_FORCES = false;
-let RUNNING_SPEED = 18;
-let AIR_SPEED = 15;
-let JUMP_IMPULSE = 150;
-const PLAYER_MASS = 10;
+let RUNNING_SPEED = 16;
+let AIR_SPEED = 14;
+let JUMP_IMPULSE = 16;
+const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;
 const PLAYER_HEIGHT = 1.0;
 const RIDE_HEIGHT = 1.0;
 const RIDE_CENTER_OFFSET = RIDE_HEIGHT / 2.0;
-
-const RAY_DOWN_LENGTH = RIDE_HEIGHT + 0.6;
-const MESH_PLAYER_HEIGHT = RIDE_HEIGHT-0.05;
-const RIDE_SPRING_STRENGTH = 2000;
-const RIDE_SPRING_DAMPER = 100;
+const ONGROUND_LENGTH = PLAYER_HEIGHT * 1.3;
+const RAY_DOWN_LENGTH = 3.0;
+const MESH_PLAYER_HEIGHT = RIDE_HEIGHT - 0.05;
+const RIDE_SPRING_STRENGTH = 200;
+const RIDE_SPRING_DAMPER = 10;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -39,6 +40,7 @@ class Player {
     maxSlopeAngle = 0.8;
     currentSlope = 0;
     rayHit = new PhysicsRaycastResult();
+    gravitationalForce;
 
     cameraRoot;
 
@@ -74,23 +76,25 @@ class Player {
 
     constructor(x, y, z) {
 
-        var debugMat = new StandardMaterial("mat");
-        debugMat.diffuseColor = new Color3(0.3, 0.3, 1);
-        //debugMat.alpha = 0.2;
-        debugMat.wireframe = false;
-
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
         this.transform = new MeshBuilder.CreateCapsule("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
-        //this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
-        this.transform.material = debugMat;
 
-        let debugRideHeight = new MeshBuilder.CreateCylinder("debugRide", { diameter:0.05, height: RIDE_HEIGHT, faceColors : [Color3.Red(), Color3.Red(), Color3.Red()], enclose: true }, GlobalManager.scene);
-        debugRideHeight.setParent(this.transform);
-        //debugRideHeight.visibility = 0.0;        
-        debugRideHeight.position = new Vector3(0, -RIDE_CENTER_OFFSET, 0);
+        if (DEBUG_FORCES) {
+            let debugMat = new StandardMaterial("debugMat");
+            debugMat.diffuseColor = new Color3(0.3, 0.3, 1);
+            this.transform.material = debugMat;
+            let debugRideHeight = new MeshBuilder.CreateCylinder("debugRide", { diameter: 0.05, height: RIDE_HEIGHT, faceColors: [Color3.Red(), Color3.Red(), Color3.Red()], enclose: true }, GlobalManager.scene);
+            debugRideHeight.setParent(this.transform);
+            //debugRideHeight.visibility = 0.0;        
+            debugRideHeight.position = new Vector3(0, -RIDE_CENTER_OFFSET, 0);
+        }
+        else {
+            this.transform.visibility = 0.0;
+
+        }
 
         this.transform.checkCollisions = true;
         this.transform.collisionGroup = 1;
@@ -113,13 +117,13 @@ class Player {
         this.gameObject = mesh1.meshes[0];
         this.gameObject.name = "Player";
         this.gameObject.scaling = new Vector3(1, 1, 1);
-        this.gameObject.position = new Vector3(0, -MESH_PLAYER_HEIGHT , 0);
+        this.gameObject.position = new Vector3(0, -MESH_PLAYER_HEIGHT, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
-
-        mesh1.meshes[0].visibility = 0;
-        mesh1.meshes[1].visibility = 0;
-
+        if (DEBUG_FORCES) {
+            mesh1.meshes[0].visibility = 0;
+            mesh1.meshes[1].visibility = 0;
+        }
         this.cameraRoot.setParent(this.gameObject);
         this.cameraRoot.position = new Vector3(0, 0, 0);
 
@@ -136,6 +140,10 @@ class Player {
             mass: PLAYER_MASS,
             //inertiaOrientation: new Quaternion(0, 0, 0, 0)
         });
+
+        this.gravitationalForce = GlobalManager.gravityVector.scale(PLAYER_MASS);
+
+        console.log(this.playerAggregate.body.getGravityFactor());
 
         //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
         if (USE_FORCES) {
@@ -264,7 +272,7 @@ class Player {
             ret = true;
         }
         this.speed = 1;//dthis.moveDir.length();
-        
+
         this.moveDir.normalize();
         return ret;
     }
@@ -285,7 +293,7 @@ class Player {
         this.calculateSlope();
         this.applySlopeOnMove();
 
-        
+
         if (this.bOnGround) {
             //Inputs
             this.moveDir.scaleInPlace(this.speed * RUNNING_SPEED);
@@ -295,10 +303,10 @@ class Player {
             this.moveDir.scaleInPlace(this.speed * AIR_SPEED);
         }
 
-        
+
         //this.gameObject.setDirection(this.direction);
         this.gameObject.lookAt(this.direction);
-        
+
         if (InputController.actions["Space"] && this.bOnGround) {
             //SoundManager.playSound(0);
             this.playerAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.ZeroReadOnly);
@@ -347,16 +355,17 @@ class Player {
         var ray1Dest = rayOrigin.add(ray1Dir.scale(ray1Len));
 
         this.rayHit.reset();
-        GlobalManager.scene.getPhysicsEngine().raycastToRef(rayOrigin, ray1Dest, this.rayHit, {collideWith: PhysMasks.PHYS_MASK_ALL});
+        GlobalManager.scene.getPhysicsEngine().raycastToRef(rayOrigin, ray1Dest, this.rayHit, { collideWith: PhysMasks.PHYS_MASK_ALL });
         if (this.rayHit.hasHit) {
             //console.log("Collision at ", this.rayHit.hitPointWorld);
+            if (this.rayHit.hitDistance < ONGROUND_LENGTH) {
+                if (!this.bOnGround) {
+                    console.log("Grounded");
 
-            if (!this.bOnGround) {
-                console.log("Grounded");
+                }
 
+                ret = true;
             }
-
-            ret = true;
         }
         return ret;
     }
@@ -367,11 +376,11 @@ class Player {
         if (this.rayHit.hasHit) {
             let ortho = Vector3.Cross(Vector3.UpReadOnly, this.rayHit.hitNormal);
             this.currentSlope = Vector3.GetAngleBetweenVectors(Vector3.UpReadOnly, this.rayHit.hitNormal, ortho);
-           // let ortho2 = Vector3.Cross(ortho, this.rayHit.hitNormal);
+            // let ortho2 = Vector3.Cross(ortho, this.rayHit.hitNormal);
 
             this.onSlope = (this.currentSlope != 0);
 
-           // console.log(this.currentSlope);
+            // console.log(this.currentSlope);
 
         }
         //ALTERNATIVE / let angle3 = -Math.acos(Vector3.Dot(Vector3.UpReadOnly,  this.rayHit.hitNormal)); 
@@ -405,12 +414,13 @@ class Player {
         }
     }
 
-    
+
     applyFloatForce() {
 
         if (this.rayHit.hasHit) {
+
             let vel = this.playerAggregate.body.getLinearVelocity();
-            
+
             let rayDir = Vector3.DownReadOnly;
             let otherVel = Vector3.Zero();
             let hitBody = this.rayHit.body;
@@ -420,29 +430,31 @@ class Player {
             let rayDirVel = Vector3.Dot(rayDir, vel);
             let otherDirVel = Vector3.Dot(rayDir, otherVel);
             let relVel = rayDirVel - otherDirVel;
-            let x = this.rayHit.hitDistance - RIDE_HEIGHT;
+            let currHeight = this.rayHit.hitDistance - RIDE_HEIGHT;
 
-            let springForce = (x * RIDE_SPRING_STRENGTH) - (relVel * RIDE_SPRING_DAMPER);
-            
-            this.playerAggregate.body.applyForce(rayDir.scale(springForce), Vector3.ZeroReadOnly);
+            let springForce = (currHeight * RIDE_SPRING_STRENGTH) - (relVel * RIDE_SPRING_DAMPER);
+            let maintainHeightForce = rayDir.scale(springForce).subtract(this.gravitationalForce);
+            //Vector3 oscillationForce = springForce * Vector3.down;
 
-            this.ray1.origin = this.transform.position;
-            this.ray1.direction = rayDir;
-            this.ray1.length = springForce;
-            this.ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
 
+            this.playerAggregate.body.applyForce(maintainHeightForce, Vector3.ZeroReadOnly);
+            if (DEBUG_FORCES) {
+                this.ray1.origin = this.transform.position;
+                this.ray1.direction = rayDir;
+                this.ray1.length = springForce;
+                this.ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
+            }
             //console.log(this.rayHit.hitDistance, springForce);
 
-            if (hitBody != null)
-            {
+            if (hitBody != null) {
                 console.log(this.rayHit);
-                hitBody.applyForce(rayDir.scale(-springForce * 0.075), Vector3.Zero());
+                hitBody.applyForce(maintainHeightForce.scale(0.1).negate(), Vector3.ZeroReadOnly);
             }
         }
         else {
             this.ray1Helper.hide();
         }
-        
+
     }
 
     getUpVector(_mesh) {
@@ -490,11 +502,11 @@ class Player {
 }
 
 function showAxes(size, mesh, scene) {
-    var makeTextPlane = function(text, color, size) {
+    var makeTextPlane = function (text, color, size) {
         var dynamicTexture = new DynamicTexture("DynamicTexture", 50, scene, true);
         dynamicTexture.hasAlpha = true;
-        dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color , "transparent", true);
-        var plane = new MeshBuilder.CreatePlane("TextPlane", { size: size, updatable: true}, scene);
+        dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color, "transparent", true);
+        var plane = new MeshBuilder.CreatePlane("TextPlane", { size: size, updatable: true }, scene);
         plane.material = new StandardMaterial("TextPlaneMaterial", scene);
         plane.material.backFaceCulling = false;
         plane.material.specularColor = new Color3(0, 0, 0);
@@ -502,26 +514,26 @@ function showAxes(size, mesh, scene) {
         return plane;
     };
 
-    var axisX = Mesh.CreateLines("axisX", [ 
-      Vector3.Zero(), new Vector3(size, 0, 0), new Vector3(size * 0.95, 0.05 * size, 0), 
-      new Vector3(size, 0, 0), new Vector3(size * 0.95, -0.05 * size, 0)
-      ], scene);
+    var axisX = Mesh.CreateLines("axisX", [
+        Vector3.Zero(), new Vector3(size, 0, 0), new Vector3(size * 0.95, 0.05 * size, 0),
+        new Vector3(size, 0, 0), new Vector3(size * 0.95, -0.05 * size, 0)
+    ], scene);
     axisX.color = new Color3(1, 0, 0);
     var xChar = makeTextPlane("X", "red", size / 10);
     xChar.position = new Vector3(0.9 * size, -0.05 * size, 0);
 
     var axisY = Mesh.CreateLines("axisY", [
-        Vector3.Zero(), new Vector3(0, size, 0), new Vector3( -0.05 * size, size * 0.95, 0), 
+        Vector3.Zero(), new Vector3(0, size, 0), new Vector3(-0.05 * size, size * 0.95, 0),
         new Vector3(0, size, 0), new Vector3(0.05 * size, size * 0.95, 0)
-        ], scene);
+    ], scene);
     axisY.color = new Color3(0, 1, 0);
     var yChar = makeTextPlane("Y", "green", size / 10);
     yChar.position = new Vector3(0, 0.9 * size, -0.05 * size);
 
     var axisZ = Mesh.CreateLines("axisZ", [
-        Vector3.Zero(), new Vector3(0, 0, size), new Vector3( 0 , -0.05 * size, size * 0.95),
+        Vector3.Zero(), new Vector3(0, 0, size), new Vector3(0, -0.05 * size, size * 0.95),
         new Vector3(0, 0, size), new Vector3(0, 0.05 * size, size * 0.95)
-        ], scene);
+    ], scene);
     axisZ.color = new Color3(0, 0, 1);
     var zChar = makeTextPlane("Z", "blue", size / 10);
     zChar.position = new Vector3(0, 0.05 * size, 0.9 * size);
@@ -530,7 +542,7 @@ function showAxes(size, mesh, scene) {
     axisX.parent = axisY.parent = axisZ.parent = xChar.parent = yChar.parent = zChar.parent = axisParent;
 
     // If the mesh is provided, position the axes at the mesh's position
-    if(mesh){
+    if (mesh) {
         axisParent.parent = mesh;
 
         axisParent.position = Vector3.Zero();
