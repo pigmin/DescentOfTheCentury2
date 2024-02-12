@@ -145,12 +145,23 @@ class World {
         debugRampe.receiveShadows = true;
         GlobalManager.addShadowCaster(debugRampe);
         debugRampe.position = new Vector3(46, -37, 8);
-        debugRampe.rotation = new Vector3(0, Scalar.RandomRange(-Math.PI, Math.PI), Math.PI/6);
+        debugRampe.rotation = new Vector3(0, 0, Math.PI/6);
         debugRampe.material = debugMat.clone();
-
         debugAggregate = new PhysicsAggregate(debugRampe, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.0 }, GlobalManager.scene);
         debugAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
         debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
+        debugRampe= MeshBuilder.CreateBox("debugRampe2", {size:1});
+        debugRampe.scaling = new Vector3(5, 0.2, 5);
+        debugRampe.receiveShadows = true;
+        GlobalManager.addShadowCaster(debugRampe);
+        debugRampe.position = new Vector3(57.1, -32, 8);
+        //debugRampe.rotation = new Vector3(0, Scalar.RandomRange(-Math.PI, Math.PI), Math.PI/6);
+        debugRampe.material = debugMat.clone();
+        debugAggregate = new PhysicsAggregate(debugRampe, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.0 }, GlobalManager.scene);
+        debugAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
+        debugAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
 /*  
 
         this.zoneA = MeshBuilder.CreateBox("zoneA", { width: 4.2, height: 0.2, depth: 2.0 }, GlobalManager.scene);
