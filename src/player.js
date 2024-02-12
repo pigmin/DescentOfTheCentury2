@@ -11,7 +11,7 @@ import flareParticleUrl from "../assets/textures/flare.png";
 const DEBUG_FORCES = true;
 const USE_FORCES = false;
 let RUNNING_SPEED = 16;
-let AIR_SPEED = 14;
+let AIR_SPEED = 2;
 let JUMP_IMPULSE = 16;
 const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;

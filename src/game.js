@@ -150,8 +150,7 @@ class Game {
         const hk = new HavokPlugin(true, this.havokInstance);
         // enable physics in the scene with a gravity
         GlobalManager.scene.enablePhysics(GlobalManager.gravityVector, hk);
-        GlobalManager.scene.gravity = new Vector3(0, -0.15, 0);
-
+        //GlobalManager.scene.gravity = new Vector3(0, -0.15, 0);      
         GlobalManager.scene.clearColor = new Color3(0.7, 0.7, 0.95);
         GlobalManager.scene.ambientColor = new Color3(0.9, 0.9, 1);
         /*GlobalManager.scene.fogMode = Scene.FOGMODE_EXP;
