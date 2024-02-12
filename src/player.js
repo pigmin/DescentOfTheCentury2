@@ -9,7 +9,7 @@ import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
 const DEBUG_FORCES = false;
-const USE_FORCES = true;
+const USE_FORCES = false;
 let RUNNING_SPEED = 10;
 let AIR_SPEED = 10;
 let JUMP_IMPULSE = 16;
