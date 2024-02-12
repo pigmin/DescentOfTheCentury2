@@ -8,10 +8,10 @@ import { InputController } from "./inputcontroller";
 import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
 
-const DEBUG_FORCES = true;
-const USE_FORCES = false;
-let RUNNING_SPEED = 16;
-let AIR_SPEED = 2;
+const DEBUG_FORCES = false;
+const USE_FORCES = true;
+let RUNNING_SPEED = 10;
+let AIR_SPEED = 10;
 let JUMP_IMPULSE = 16;
 const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;
@@ -102,10 +102,12 @@ class Player {
 
         this.cameraRoot = new TransformNode("cameraRoot");
 
-        this.moveDirLines = new AxesViewer(GlobalManager.scene, 2);
-        this.moveDirLines.xAxis.parent = this.transform;
-        this.moveDirLines.yAxis.parent = this.transform;
-        this.moveDirLines.zAxis.parent = this.transform;
+        if (DEBUG_FORCES) {
+            this.moveDirLines = new AxesViewer(GlobalManager.scene, 2);
+            this.moveDirLines.xAxis.parent = this.transform;
+            this.moveDirLines.yAxis.parent = this.transform;
+            this.moveDirLines.zAxis.parent = this.transform;
+        }
         //showAxes(5, this.transform, GlobalManager.scene);
 
 
@@ -285,6 +287,8 @@ class Player {
         let bWasOnGround = this.bOnGround;
         this.bOnGround = this.checkGround();
 
+        let gravity = this.playerAggregate.body.getLinearVelocity().y;
+
         //On applique tout suivant l'orientation de la camera
         this.applyCameraDirectionToMoveDirection();
 
@@ -403,14 +407,16 @@ class Player {
             let projectedVector = this.moveDir.subtract(perpendicularVector);
 
 
-            this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, projectedVector, planeNormal);
+            if (DEBUG_FORCES)
+                this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, projectedVector, planeNormal);
 
             // projectedVector est maintenant la projection de vectorToProject sur le plan
             this.moveDir = projectedVector;
 
         }
         else {
-            this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, this.moveDir, this.transform.up);
+            if (DEBUG_FORCES)
+                this.moveDirLines.update(Vector3.ZeroReadOnly, this.moveDir, this.moveDir, this.transform.up);
         }
     }
 
