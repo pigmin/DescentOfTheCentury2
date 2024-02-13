@@ -471,9 +471,9 @@ class Player {
 
     getUpVector(_mesh) {
         _mesh.computeWorldMatrix(true);
-        var forward_local = new Vector3(0, 1, 0);
+        var up_local = new Vector3(0, 1, 0);
         const worldMatrix = _mesh.getWorldMatrix();
-        return Vector3.TransformNormal(forward_local, worldMatrix);
+        return Vector3.TransformNormal(up_local, worldMatrix);
     }
 
     getForwardVector(_mesh) {
@@ -485,9 +485,9 @@ class Player {
 
     getRightVector(_mesh) {
         _mesh.computeWorldMatrix(true);
-        var forward_local = new Vector3(1, 0, 0);
+        var right_local = new Vector3(1, 0, 0);
         const worldMatrix = _mesh.getWorldMatrix();
-        return Vector3.TransformNormal(forward_local, worldMatrix);
+        return Vector3.TransformNormal(right_local, worldMatrix);
     }
 
     verticalSlope(v) {
