@@ -100,50 +100,31 @@ class World {
         debugBouncingBox.material.diffuseColor = new Color4(0.8, 0, 0, 0.5);
         debugBouncingBox.material.emissiveColor = new Color4(0.2, 0, 0, 0.5);
 
-        debugAggregate = new PhysicsAggregate(debugBouncingBox, PhysicsShapeType.BOX, { mass: 15, friction: 0.5, restitution: 0.8 }, GlobalManager.scene);
+        debugAggregate = new PhysicsAggregate(debugBouncingBox, PhysicsShapeType.BOX, { mass: 10, friction: 0.5, restitution: 0.8 }, GlobalManager.scene);
         debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-/*
 
-        let debugBoxMod = MeshBuilder.CreateBox("debugBoxD0", { size: 1 });
-        GlobalManager.addShadowCaster(debugBoxMod);
-        debugBoxMod.material = debugMat.clone();
-        debugBoxMod.material.diffuseColor = new Color4(0.0, 0.8, 0, 1);
-        debugBoxMod.material.emissiveColor = new Color4(0.0, 0.4, 0, 1);
-        debugBoxMod.receiveShadows = true;
 
-        let boxArray = []
-        for (let i = 0; i < 15; i++) {
-            //let debugBox = debugBoxMod.createInstance("debugBoxD"+i);
-            let position = new Vector3(Scalar.RandomRange(25, 70), Scalar.RandomRange(60, -30), Scalar.RandomRange(-20, 20));
-            let rotation = Quaternion.FromEulerAngles(0, Scalar.RandomRange(-Math.PI / 2, Math.PI / 2), Scalar.RandomRange(-Math.PI / 4, Math.PI / 4));
-            let scale = new Vector3(Scalar.RandomRange(1.0, 4.0), Scalar.RandomRange(0.25, 1.0), Scalar.RandomRange(1.5, 3.0));
-            let matrix = Matrix.Compose(scale, rotation, position);
-            boxArray.push(matrix);
-        }
-        debugBoxMod.thinInstanceAdd(boxArray, true);
-        debugAggregate = new PhysicsAggregate(debugBoxMod, PhysicsShapeType.BOX, { mass: 15, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
-        //debugAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-          let debugBoxMod2 = MeshBuilder.CreateBox("debugBoxS0", { size: 1 });
+        let debugBoxMod2 = MeshBuilder.CreateBox("debugBoxS0", { size: 1 });
         GlobalManager.addShadowCaster(debugBoxMod2);
         debugBoxMod2.material = debugMat;
         debugBoxMod2.receiveShadows = true;
 
-        let boxArray2 = []
         for (let i = 0; i < 15; i++) {
             let position = new Vector3(Scalar.RandomRange(25, 70), -37.65, Scalar.RandomRange(-20, 20));
             let scaling = new Vector3(Scalar.RandomRange(0.5, 1.5), 0.5, 5);
-            let rotation = Quaternion.Identity();
-            let matrix = Matrix.Compose(scaling, rotation, position);
-            boxArray2.push(matrix);
+
+            let newBox = debugBoxMod2.createInstance();
+            newBox.position = position;
+            newBox.scaling = scaling;
+
+            debugAggregate = new PhysicsAggregate(newBox, PhysicsShapeType.BOX, { mass: 0, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+            debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
         }
-        debugBoxMod2.thinInstanceAdd(boxArray2, true);
 
-        debugAggregate = new PhysicsAggregate(debugBoxMod2, PhysicsShapeType.BOX, { mass: 0, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
-        //    debugAggregate.body.setMotionType(PhysicsMotionType.STATIC);
 
-*/
-        this.createClones();
+
+        this.createDynamicCubesInstances();
+       // this.createStaticCubes();
 
         let debugSphere = MeshBuilder.CreateSphere("debugSphere", { diameter: 5 });
         debugSphere.receiveShadows = true;
@@ -199,7 +180,10 @@ class World {
     }
 
 
-    createClones() {
+    /**
+     * Les thinInstances semblent ne pas prendrent en compte scaling et rot pour le moment...
+     */
+    createDynamicCubesInstances() {
         let debugMat = new StandardMaterial("debugMat", GlobalManager.scene);
         debugMat.emissiveTexture = new Texture(debugTexUrl);
         debugMat.emissiveColor = new Color3(0, 0.1, 0.4);
@@ -208,31 +192,26 @@ class World {
 
         //Scene render/register
         // Our built-in 'sphere' shape.
-        let debugBoxMod = MeshBuilder.CreateBox("debugBoxD0", { size: 1 });
+        let debugBoxMod = MeshBuilder.CreateBox("debugBoxD0", { width:2, depth: 4, height: 0.5});
+        debugBoxMod.position = Vector3.Zero();
+        debugBoxMod.computeWorldMatrix(true);
         GlobalManager.addShadowCaster(debugBoxMod);
         debugBoxMod.material = debugMat.clone();
         debugBoxMod.material.diffuseColor = new Color4(0.0, 0.8, 0, 1);
         debugBoxMod.material.emissiveColor = new Color4(0.0, 0.4, 0, 1);
         debugBoxMod.receiveShadows = true;
         
-        // Move the sphere upward 1/2 its height
+        let NB_DYN_CUBES = 50;
+        let matricesData = new Float32Array(16 * NB_DYN_CUBES);
+        for (let i = 0; i < NB_DYN_CUBES; i++) {
 
-        let boxeArray = [];
-        for (let i = 0; i < 15; i++) {
-//                const matrix2 = Matrix.Translation(i * 10 + Scalar.RandomRange(-1, 1), -30, 10 + Scalar.RandomRange(-1, 1));
-
-                let position = new Vector3(Scalar.RandomRange(25, 70), Scalar.RandomRange(60, -30), Scalar.RandomRange(-20, 20));
-                let rotation = Quaternion.FromEulerAngles(0, Scalar.RandomRange(-Math.PI / 2, Math.PI / 2), Scalar.RandomRange(-Math.PI / 4, Math.PI / 4));
-                let scale = new Vector3(Scalar.RandomRange(1.0, 4.0), Scalar.RandomRange(0.25, 1.0), Scalar.RandomRange(1.5, 3.0));
-                let matrix = Matrix.Compose(scale, rotation, position);
-
-
-                boxeArray.push(matrix);
+                let position = Matrix.Translation(Scalar.RandomRange(25, 70), Scalar.RandomRange(60, -30), Scalar.RandomRange(-20, 20));
+                position.copyToArray(matricesData, i * 16);
+                
         }
-
-            debugBoxMod.thinInstanceAdd(boxeArray, true);
+        debugBoxMod.thinInstanceSetBuffer("matrix", matricesData, 16, false);
+        let debugAggregate = new PhysicsAggregate(debugBoxMod, PhysicsShapeType.BOX, { mass: 5, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
         
-        let debugAggregate = new PhysicsAggregate(debugBoxMod, PhysicsShapeType.BOX, { mass: 15, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
 
 
     }
