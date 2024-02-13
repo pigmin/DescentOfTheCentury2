@@ -24,6 +24,7 @@ const RAY_DOWN_LENGTH = 3.0;
 const MESH_PLAYER_HEIGHT = RIDE_HEIGHT - 0.05;
 const RIDE_SPRING_STRENGTH = 200;
 const RIDE_SPRING_DAMPER = 10;
+const BODY_FORCE_FEED_BACK_MULTIPLIER = 0.8;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -42,6 +43,8 @@ class Player {
     currentSlope = 0;
     rayHit = new PhysicsRaycastResult();
     gravitationalForce;
+    hitMatrix = new Matrix();
+    hitBodyVector = Vector3.Zero();
 
     cameraRoot;
 
@@ -455,11 +458,9 @@ class Player {
 
             if (hitBody != null) {
                 //console.log(this.rayHit);
-                var m = new Matrix(); 
-                hitBody.transformNode.getWorldMatrix().invertToRef(m);
-                var v = Vector3.TransformCoordinates(this.rayHit.hitPoint, m);
-console.log(v);
-                hitBody.applyForce(maintainHeightForce.scale(0.1).negate(), v);
+                hitBody.transformNode.getWorldMatrix().invertToRef(this.hitMatrix);
+                Vector3.TransformCoordinatesToRef(this.rayHit.hitPoint, this.hitMatrix, this.hitBodyVector);
+                hitBody.applyForce(maintainHeightForce.scale(BODY_FORCE_FEED_BACK_MULTIPLIER).negate(), this.hitBodyVector);
             }
         }
         else {
