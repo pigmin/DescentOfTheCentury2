@@ -461,6 +461,7 @@ class Player {
                 //console.log(this.rayHit);
                 hitBody.transformNode.getWorldMatrix().invertToRef(this.hitMatrix);
                 Vector3.TransformCoordinatesToRef(this.rayHit.hitPoint, this.hitMatrix, this.hitBodyVector);
+                //TODO : passe the body instance...how to get it ...???
                 hitBody.applyForce(maintainHeightForce.scale(BODY_FORCE_FEED_BACK_MULTIPLIER).negate(), this.hitBodyVector);
             }
         }
