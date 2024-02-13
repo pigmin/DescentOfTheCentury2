@@ -1,5 +1,3 @@
-import { Axis, Color3, Color4, Matrix, Mesh, MeshBuilder, ParticleSystem, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Quaternion, Ray, RayHelper, Scalar, SceneLoader, Space, Texture, TransformNode, Vector3, Plane, StandardMaterial, DynamicTexture, AxesViewer } from "@babylonjs/core";
-
 
 import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
@@ -7,6 +5,9 @@ import { InputController } from "./inputcontroller";
 
 import meshUrl from "../assets/models/girl1.glb";
 import flareParticleUrl from "../assets/textures/flare.png";
+import { AxesViewer, Color3, Color4, DynamicTexture, Matrix, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Ray, RayHelper, SceneLoader, StandardMaterial, Texture, TransformNode, Vector3 } from "@babylonjs/core";
+
+
 
 const DEBUG_FORCES = false;
 const USE_FORCES = false;
@@ -145,7 +146,7 @@ class Player {
 
         this.gravitationalForce = GlobalManager.gravityVector.scale(PLAYER_MASS);
 
-        console.log(this.playerAggregate.body.getGravityFactor());
+        //console.log(this.playerAggregate.body.getGravityFactor());
 
         //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
         if (USE_FORCES) {
@@ -453,8 +454,12 @@ class Player {
             //console.log(this.rayHit.hitDistance, springForce);
 
             if (hitBody != null) {
-                console.log(this.rayHit);
-                hitBody.applyForce(maintainHeightForce.scale(0.1).negate(), Vector3.ZeroReadOnly);
+                //console.log(this.rayHit);
+                var m = new Matrix(); 
+                hitBody.transformNode.getWorldMatrix().invertToRef(m);
+                var v = Vector3.TransformCoordinates(this.rayHit.hitPoint, m);
+console.log(v);
+                hitBody.applyForce(maintainHeightForce.scale(0.1).negate(), v);
             }
         }
         else {

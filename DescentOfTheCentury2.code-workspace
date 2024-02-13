@@ -4,5 +4,10 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"javascript.preferences.importModuleSpecifierEnding": "auto",
+		"typescript.preferences.importModuleSpecifierEnding": "auto",
+		"javascript.preferences.importModuleSpecifier": "shortest",
+		"typescript.preferences.importModuleSpecifier": "shortest"
+	}
 }
