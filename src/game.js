@@ -1,28 +1,35 @@
-import { ArcFollowCamera, ArcRotateCamera, BoundingInfo, Color3, Color4, CubeTexture, DefaultRenderingPipeline, DirectionalLight, FlyCamera, FollowCamera, FreeCamera, GizmoManager, HavokPlugin, HemisphericLight, KeyboardEventTypes, MeshBuilder, MotionBlurPostProcess, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Quaternion, Scalar, Scene, SceneLoader, ShadowGenerator, Sound, StandardMaterial, TargetCamera, Texture, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { Inspector } from "@babylonjs/inspector";
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Inspector } from '@babylonjs/inspector';
+import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
 import HavokPhysics from "@babylonjs/havok";
-
+import { Scene } from '@babylonjs/core/scene';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 
 const NB_DECORS = 30;
 const MAIN_SCENE_ROT_X = 0;
 
 const PLAYER_Z_BASE = 14;
 
-const PLAYER_START = new Vector3(50, -36, 4);
+const PLAYER_START = new Vector3(71.6, -26, -10.6);
 const CAMERA_START_POS = new Vector3(50, -20, -14);
 
 import envfileUrl from "../assets/env/environment.env";
 
 
 
-import { InputController } from "./inputcontroller";
 import { GlobalManager, States } from "./globalmanager";
+import { InputController } from "./inputcontroller";
 import { SoundManager } from "./soundmanager";
 
+import { FollowCamera2 } from "./followCamera2";
 import GameUI from "./gameUI";
 import Player from "./player";
 import World from "./world";
-import { FollowCamera2 } from "./followCamera2";
+
 
 class Game {
 
@@ -196,9 +203,9 @@ class Game {
             skyboxSize: 8000,
             createGround: false,
         };
-        this.env = GlobalManager.scene.createDefaultEnvironment(envOptions);
+        GlobalManager.environment = GlobalManager.scene.createDefaultEnvironment(envOptions);
 
-        this.env.skybox.rotation.set(0.43, 4.79, 0);
+        GlobalManager.environment.skybox.rotation.set(0.43, 4.79, 0);
 
         // Set up new rendering pipeline
         /*   var pipeline = new DefaultRenderingPipeline("default", true, GlobalManager.scene, [GlobalManager.gameCamera]);

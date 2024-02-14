@@ -1,4 +1,7 @@
-import { FollowCamera, Node, TargetCamera, Tools, Vector3 } from "@babylonjs/core";
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { FollowCamera } from '@babylonjs/core/Cameras/followCamera';
+import { Tools } from '@babylonjs/core/Misc/tools';
+import { Node } from '@babylonjs/core/node';
 
 Node.AddNodeConstructor("FollowCamera2", (name, scene) => {
     return () => new FollowCamera2(name, Vector3.Zero(), scene);

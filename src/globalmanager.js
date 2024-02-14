@@ -1,4 +1,5 @@
-import { Vector3 } from "@babylonjs/core";
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+
 import { SoundManager } from "./soundmanager";
 
 export const States = Object.freeze({
@@ -45,6 +46,7 @@ class GlobalManager {
     bPause = false;
 
     shadowGenerators = [];
+    environment;
 
     scoreA = 0;
     scoreB = 0;

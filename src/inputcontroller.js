@@ -1,4 +1,8 @@
-import { GamepadManager, KeyboardEventTypes, Scalar, Vector2, Vector3 } from "@babylonjs/core";
+import { Vector2 } from '@babylonjs/core/Maths/math.vector';
+import { GamepadManager } from '@babylonjs/core/Gamepads/gamepadManager';
+import { KeyboardEventTypes } from '@babylonjs/core/Events/keyboardEvents';
+import { Scalar } from '@babylonjs/core/Maths/math.scalar';
+
 import { GlobalManager } from "./globalmanager";
 
 class InputController {

@@ -1,19 +1,33 @@
+import { PhysicsRaycastResult } from '@babylonjs/core/Physics/physicsRaycastResult';
+import { Vector3, Matrix } from "@babylonjs/core/Maths/math.vector";
+import { Ray } from '@babylonjs/core/Culling/ray';
+import { RayHelper } from '@babylonjs/core/Debug/rayHelper';
+import { AxesViewer } from '@babylonjs/core/Debug/axesViewer';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
+import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import { PhysicsAggregate } from '@babylonjs/core/Physics/v2/physicsAggregate';
+import { PhysicsShapeType, PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
+import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 
 import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
 import { InputController } from "./inputcontroller";
 
 import meshUrl from "../assets/models/girl1.glb";
-import flareParticleUrl from "../assets/textures/flare.png";
-import { AxesViewer, Color3, Color4, DynamicTexture, Matrix, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Ray, RayHelper, SceneLoader, StandardMaterial, Texture, TransformNode, Vector3 } from "@babylonjs/core";
-
+import dustParticleUrl from "../assets/textures/dust.png";
 
 
 const DEBUG_FORCES = false;
 const USE_FORCES = false;
 let RUNNING_SPEED = 10;
 let AIR_SPEED = 10;
-let JUMP_IMPULSE = 16;
+let JUMP_IMPULSE = 20;
 const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;
 const PLAYER_HEIGHT = 1.0;
@@ -21,11 +35,11 @@ const RIDE_HEIGHT = 1.0;
 const RIDE_CENTER_OFFSET = RIDE_HEIGHT / 2.0;
 const ONGROUND_LENGTH = PLAYER_HEIGHT * 1.3;
 const RAY_DOWN_LENGTH = 3.0;
-const MESH_PLAYER_HEIGHT = RIDE_HEIGHT - 0.05;
+const MESH_PLAYER_HEIGHT = RIDE_HEIGHT - 0.075;
 const RIDE_SPRING_STRENGTH = 200;
-const RIDE_SPRING_DAMPER = 20;
+const RIDE_SPRING_DAMPER = 10;
 
-const BODY_FORCE_FEED_BACK_MULTIPLIER = 0.1;
+const BODY_FORCE_FEED_BACK_MULTIPLIER = 0.025;
 
 const SPEED_Z = 40;
 const SPEED_X = 10;
@@ -38,7 +52,7 @@ class Player {
     transform;
     //Mesh
     gameObject;
-    particleSystemSnow;
+    particleSystemDust;
 
     maxSlopeAngle = 0.8;
     currentSlope = 0;
@@ -170,7 +184,7 @@ class Player {
         this.walkAnim = GlobalManager.scene.getAnimationGroupByName('Walking');
         this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
 
-        //ithis.initParticles();
+        this.initParticles();
         this.test();
     }
 
@@ -220,48 +234,49 @@ class Player {
 
     initParticles() {
         // Create a particle system
-        this.particleSystemSnow = new ParticleSystem("particles", 2000, GlobalManager.scene);
-        this.particleSystemSnow.gravity = new Vector3(0, -9.81, 0);
+        this.particleSystemDust = new ParticleSystem("particles", 200, GlobalManager.scene);
+        this.particleSystemDust.gravity = new Vector3(0, 0.5, 0);
         //Texture of each particle
-        this.particleSystemSnow.particleTexture = new Texture(flareParticleUrl, GlobalManager.scene);
+        this.particleSystemDust.particleTexture = new Texture(dustParticleUrl, GlobalManager.scene);
         // Where the particles come from
-        this.particleSystemSnow.emitter = new TransformNode("spawnsnow", GlobalManager.scene);
-        this.particleSystemSnow.emitter.parent = this.gameObject;
-        this.particleSystemSnow.emitter.position.z = -1;
-        this.particleSystemSnow.minEmitBox = new Vector3(-.2, -.1, 1.5); // Bottom Left Front
-        this.particleSystemSnow.maxEmitBox = new Vector3(.2, 0, -.2); // Top Right Back
+        this.particleSystemDust.emitter = new TransformNode("spawndust", GlobalManager.scene);
+        this.particleSystemDust.emitter.parent = this.gameObject;
+        this.particleSystemDust.emitter.position.y = -(ONGROUND_LENGTH/2);
+        this.particleSystemDust.minEmitBox = new Vector3(-.2, -.1, -.2); // Bottom Left Front
+        this.particleSystemDust.maxEmitBox = new Vector3(.2, 0, .2); // Top Right Back
 
         // Colors of all particles
-        this.particleSystemSnow.color1 = new Color4(0.8, 0.8, 1.0, 1.0);
-        this.particleSystemSnow.color2 = new Color4(0.7, 0.7, 1.0, 1.0);
-        this.particleSystemSnow.colorDead = new Color4(0.2, 0.2, 0.4, 0.0);
+        this.particleSystemDust.color1 = new Color4(0.52, 0.36, 0.12, 1.0);
+        this.particleSystemDust.color2 = new Color4(0.33, 0.18, 0, 1.0);
+        this.particleSystemDust.colorDead = new Color4(0, 0, 0, 0.0);
 
         // Size of each particle (random between...
-        this.particleSystemSnow.minSize = 0.025;
-        this.particleSystemSnow.maxSize = 0.35;
+        this.particleSystemDust.minSize = 0.05;
+        this.particleSystemDust.maxSize = 0.5;
 
         // Life time of each particle (random between...
-        this.particleSystemSnow.minLifeTime = 0.1;
-        this.particleSystemSnow.maxLifeTime = 0.6;
+        this.particleSystemDust.minLifeTime = 0.1;
+        this.particleSystemDust.maxLifeTime = 0.6;
 
         // Emission rate
-        this.particleSystemSnow.emitRate = 4000;
+        this.particleSystemDust.emitRate = 20;
 
         // Direction of each particle after it has been emitted
-        this.particleSystemSnow.direction1 = new Vector3(-3, 0, -SPEED_Z / 2);
-        this.particleSystemSnow.direction2 = new Vector3(3, 8, -SPEED_Z);
+        this.particleSystemDust.direction1 = new Vector3(-3, 0, -3);
+        this.particleSystemDust.direction2 = new Vector3(3, 1, 3);
 
         // Angular speed, in radians
-        this.particleSystemSnow.minAngularSpeed = 0;
-        this.particleSystemSnow.maxAngularSpeed = Math.PI / 4;
-
+        this.particleSystemDust.minAngularSpeed = 0;
+        this.particleSystemDust.maxAngularSpeed = 0;
+        this.particleSystemDust.minInitialRotation = 0;
+        this.particleSystemDust.maxInitialRotation = 180;
         // Speed
-        this.particleSystemSnow.minEmitPower = .1;
-        this.particleSystemSnow.maxEmitPower = 2;
-        this.particleSystemSnow.updateSpeed = 0.0075;
+        this.particleSystemDust.minEmitPower = .1;
+        this.particleSystemDust.maxEmitPower = 2;
+        this.particleSystemDust.updateSpeed = 0.0075;
 
         // Start the particle system
-        this.particleSystemSnow.start();
+        this.particleSystemDust.stop();
     }
 
 
@@ -343,10 +358,12 @@ class Player {
 
             if (!bWasWalking) {
                 this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
+                this.particleSystemDust.start();
             }
         }
         else {
             if (bWasWalking) {
+                this.particleSystemDust.stop();
                 this.runAnim.stop();
                 this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
             }

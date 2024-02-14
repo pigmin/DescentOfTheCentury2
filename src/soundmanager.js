@@ -1,10 +1,12 @@
+import { Sound } from '@babylonjs/core/Audio/sound';
+import { AssetsManager } from '@babylonjs/core/Misc/assetsManager';
+
 import { GlobalManager } from "./globalmanager";
 
 import musicUrl from "../assets/musics/Black Diamond.mp3";
 import hitSoundUrl from "../assets/sounds/344033__reitanna__cute-impact.wav";
 import skiingSoundUrl from "../assets/sounds/skiing.mp3";
 
-import { AssetsManager, Sound } from "@babylonjs/core";
 
 // assets here : https://itch.io/game-assets/free/tag-music
 class SoundManager {
