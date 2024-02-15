@@ -1,4 +1,4 @@
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Vector3, Vector2 } from '@babylonjs/core/Maths/math.vector';
 import { Inspector } from '@babylonjs/inspector';
 import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
 import HavokPhysics from "@babylonjs/havok";
@@ -8,18 +8,9 @@ import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
-
-const NB_DECORS = 30;
-const MAIN_SCENE_ROT_X = 0;
-
-const PLAYER_Z_BASE = 14;
-
-const PLAYER_START = new Vector3(71.6, -26, -10.6);
-const CAMERA_START_POS = new Vector3(50, -20, -14);
-
-import envfileUrl from "../assets/env/environment.env";
-
-
+import { WaterMaterial } from '@babylonjs/materials';
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
 
 import { GlobalManager, States } from "./globalmanager";
 import { InputController } from "./inputcontroller";
@@ -29,6 +20,20 @@ import { FollowCamera2 } from "./followCamera2";
 import GameUI from "./gameUI";
 import Player from "./player";
 import World from "./world";
+
+
+import envfileUrl from "../assets/env/environment.env";
+import waterBumpUrl from "../assets/textures/waterbump.png";
+
+
+
+const NB_DECORS = 30;
+const MAIN_SCENE_ROT_X = 0;
+
+const PLAYER_Z_BASE = 14;
+
+const PLAYER_START = new Vector3(71.6, -26, -10.6);
+const CAMERA_START_POS = new Vector3(50, -20, -14);
 
 
 class Game {
@@ -233,6 +238,23 @@ class Game {
         shadowGenerator.frustumEdgeFalloff = 1.0;
         shadowGenerator.setDarkness(0.0);
         GlobalManager.addShadowGenerator(shadowGenerator);
+
+        GlobalManager.waterMaterial = new WaterMaterial("water_material", GlobalManager.scene, new Vector2(128, 128));
+        GlobalManager.water = MeshBuilder.CreateGround("water", { width: 128, height: 128, subdivisions: 32 }, GlobalManager.scene);
+        GlobalManager.water.position = new Vector3(91.32, -31.45, -33.88);
+        GlobalManager.waterMaterial.bumpTexture = new Texture(waterBumpUrl, GlobalManager.scene);
+        GlobalManager.waterMaterial.windForce = -5;
+        GlobalManager.waterMaterial.alpha = 0.75;
+        GlobalManager.waterMaterial.waveHeight = 0.0;
+        GlobalManager.waterMaterial.windDirection = new Vector2(0, 1);
+        GlobalManager.waterMaterial.waterColor = new Color3(0.1, 0.1, 0.6);
+        GlobalManager.waterMaterial.colorBlendFactor = 0.3;
+        GlobalManager.waterMaterial.bumpHeight = 0.25;
+        GlobalManager.waterMaterial.waveLength = 0.25;
+
+        
+        GlobalManager.water.material = GlobalManager.waterMaterial;
+
 
 
         // Finally create the motion blur effect :)

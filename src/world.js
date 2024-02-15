@@ -1,4 +1,4 @@
-import { Vector3, Matrix, Vector2 } from "@babylonjs/core/Maths/math.vector";
+import { Vector3, Vector2 } from "@babylonjs/core/Maths/math.vector";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { PhysicsAggregate } from '@babylonjs/core/Physics/v2/physicsAggregate';
@@ -16,9 +16,7 @@ import peachCastleUrl from "../assets/models/peach_castle.glb";
 
 
 import debugTexUrl from "../assets/textures/GridEmissive.png";
-import waterBumpUrl from "../assets/textures/waterbump.png";
 
-import { WaterMaterial } from '@babylonjs/materials';
 
 class World {
 
@@ -29,8 +27,6 @@ class World {
     gameObject;
     meshAggregate;
 
-    water;
-    waterMaterial;
 
     constructor(x, y, z) {
         this.x = x || 0;
@@ -39,8 +35,6 @@ class World {
     }
 
     async init() {
-
-        this.waterMaterial = new WaterMaterial("water_material", GlobalManager.scene, new Vector2(128, 128));
 
         const result = await SceneLoader.ImportMeshAsync("", "", peachCastleUrl, GlobalManager.scene);
         this.gameObject = result.meshes[0];
@@ -54,30 +48,48 @@ class World {
 
             childMesh.refreshBoundingInfo(true);
             if (childMesh.getTotalVertices() > 0) {
-                const groundAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.2 }, GlobalManager.scene);
-                groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
-                groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
-                this.waterMaterial.addToRenderList(childMesh);
-                childMesh.receiveShadows = true;
-                GlobalManager.addShadowCaster(childMesh);
+                if (childMesh.name === "Castle") {
+                    const groundAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.2 }, GlobalManager.scene);
+                    groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+                    groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+                    GlobalManager.waterMaterial.addToRenderList(childMesh);
+                    childMesh.receiveShadows = true;
+                    GlobalManager.addShadowCaster(childMesh);
+                }
+                else if (childMesh.name === "Grass") {
+                    const groundAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, { mass: 0, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+                    groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+                    groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+                    GlobalManager.waterMaterial.addToRenderList(childMesh);
+                    childMesh.receiveShadows = true;
+                    GlobalManager.addShadowCaster(childMesh);
+                }
+                else if (childMesh.name === "Skybox") {
+                    GlobalManager.waterMaterial.addToRenderList(childMesh);
+                    childMesh.receiveShadows = false;
+                }
+                else if (childMesh.name.includes("Windows")) {
+                    GlobalManager.waterMaterial.addToRenderList(childMesh);
+                    childMesh.receiveShadows = false;
+                }
+                else if (childMesh.name.includes("Tree")) {
+                    //TODO : create a "tree" object instance to react to wind, jumps, etc.
+                    const groundAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, { mass: 20, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
+                    groundAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+                    groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
+
+        
+                    GlobalManager.waterMaterial.addToRenderList(childMesh);
+                    childMesh.receiveShadows = true;
+                    GlobalManager.addShadowCaster(childMesh);
+                }
+                else {
+                   //RAS
+                }
             }
         }
 
-        this.water = MeshBuilder.CreateGround("water", { width: 128, height: 128, subdivisions: 32 }, GlobalManager.scene);
-        this.water.position = new Vector3(91.32, -31.45, -33.88);
-        this.waterMaterial.bumpTexture = new Texture(waterBumpUrl, GlobalManager.scene);
-        this.waterMaterial.windForce = -5;
-        this.waterMaterial.alpha = 0.75;
-        this.waterMaterial.waveHeight = 0.0;
-        this.waterMaterial.windDirection = new Vector2(0, 1);
-        this.waterMaterial.waterColor = new Color3(0.1, 0.1, 0.6);
-        this.waterMaterial.colorBlendFactor = 0.3;
-        this.waterMaterial.bumpHeight = 0.25;
-        this.waterMaterial.waveLength = 0.25;
-
-        
-        this.water.material = this.waterMaterial;
-        //this.waterMaterial.addToRenderList(GlobalManager.environment.skybox);
+        //GlobalManager.waterMaterial.addToRenderList(GlobalManager.environment.skybox);
 
 /*
         let groundMat = this.gameObject.material;

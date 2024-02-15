@@ -136,7 +136,7 @@ class Player {
 
         const mesh1 = await SceneLoader.ImportMeshAsync("", "", meshUrl, GlobalManager.scene);
         this.gameObject = mesh1.meshes[0];
-        this.gameObject.name = "Player";
+        this.gameObject.name = "playerMesh";
         this.gameObject.scaling = new Vector3(1, 1, 1);
         this.gameObject.position = new Vector3(0, -MESH_PLAYER_HEIGHT, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
@@ -150,6 +150,7 @@ class Player {
 
         GlobalManager.gameCamera.lockedTarget = this.gameObject;
         GlobalManager.addShadowCaster(this.gameObject, true);
+        GlobalManager.waterMaterial.addToRenderList(mesh1.meshes[1]);
 
         this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: PLAYER_MASS, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
         this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);

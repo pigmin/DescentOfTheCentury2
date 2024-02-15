@@ -47,6 +47,9 @@ class GlobalManager {
 
     shadowGenerators = [];
     environment;
+    
+    water;
+    waterMaterial;
 
     scoreA = 0;
     scoreB = 0;
