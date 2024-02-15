@@ -95,6 +95,19 @@ class GlobalManager {
         this.scoreB++;
         this.gameState = States.STATE_BALL_CENTER;
     }
+
+    clampMagnitudeInPlace(vector, maxLength) {
+        // Calculer la longueur (magnitude) actuelle du vecteur
+        let currentLength = vector.length();
+    
+        // Si la longueur est déjà inférieure ou égale à maxLength, renvoyer le vecteur initial
+        if (currentLength <= maxLength) {
+            return vector;
+        }
+    
+        // Retourner le vecteur redimensionné
+        vector.scaleInPlace(maxLength / currentLength)
+    }
     
 }
 

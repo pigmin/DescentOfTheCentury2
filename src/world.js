@@ -16,6 +16,7 @@ import peachCastleUrl from "../assets/models/peach_castle.glb";
 
 
 import debugTexUrl from "../assets/textures/GridEmissive.png";
+import Tree from './tree';
 
 
 class World {
@@ -26,6 +27,7 @@ class World {
 
     gameObject;
     meshAggregate;
+    trees = [];
 
 
     constructor(x, y, z) {
@@ -73,15 +75,8 @@ class World {
                     childMesh.receiveShadows = false;
                 }
                 else if (childMesh.name.includes("Tree")) {
-                    //TODO : create a "tree" object instance to react to wind, jumps, etc.
-                    const groundAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, { mass: 20, friction: 0.5, restitution: 0.3 }, GlobalManager.scene);
-                    groundAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-                    groundAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
 
-        
-                    GlobalManager.waterMaterial.addToRenderList(childMesh);
-                    childMesh.receiveShadows = true;
-                    GlobalManager.addShadowCaster(childMesh);
+                    this.trees.push( new Tree(childMesh) );
                 }
                 else {
                    //RAS
@@ -241,6 +236,9 @@ class World {
 
     update(delta) {
 
+        for (let tree of this.trees) {
+            tree.update(delta);
+        }
     }
 }
 

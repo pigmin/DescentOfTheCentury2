@@ -105,10 +105,15 @@ class Game {
                 this.bInspector = !this.bInspector;
 
                 if (this.bInspector) {
+                    GlobalManager.gameCamera.detachControl();
+                    GlobalManager.debugCamera.attachControl(this.canvas, true);
                     GlobalManager.scene.activeCamera = GlobalManager.debugCamera;
+
                     Inspector.Show(GlobalManager.scene, { embedMode: false })
                 }
                 else {
+                    GlobalManager.debugCamera.detachControl();
+                    GlobalManager.gameCamera.attachControl(this.canvas, true);
                     GlobalManager.scene.activeCamera = GlobalManager.gameCamera;
                     Inspector.Hide();
                 }
@@ -199,7 +204,6 @@ class Game {
         GlobalManager.debugCamera.inputs.addMouseWheel();
         // This attaches the camera to the canvas
         //GlobalManager.debugCamera.setTarget(PLAYER_START.clone());
-        GlobalManager.debugCamera.attachControl(this.canvas, true);
 
         // if not setting the envtext of the scene, we have to load the DDS module as well
         var envOptions = {
