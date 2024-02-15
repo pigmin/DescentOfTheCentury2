@@ -20,34 +20,28 @@ import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
 import { InputController } from "./inputcontroller";
 
-import meshUrl from "../assets/models/girl1.glb";
+import meshUrl from "../assets/models/robot_sphere.glb";
+//import meshUrl from "../assets/models/girl1.glb";
 import dustParticleUrl from "../assets/textures/dust.png";
 
 
 const DEBUG_FORCES = false;
-const USE_FORCES = true;
 const ADJUST_INPUT_TO_CAMERA = true;
 
-let RUNNING_SPEED = 10;
-let AIR_SPEED = 10;
-let JUMP_IMPULSE = 20;
+
 const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;
-const PLAYER_HEIGHT = 1.0;
-const RIDE_HEIGHT = 1.0;
+const PLAYER_HEIGHT = 2.0;
+const RIDE_HEIGHT = 2.0;
 const RIDE_CENTER_OFFSET = RIDE_HEIGHT / 2.0;
-const ONGROUND_LENGTH = PLAYER_HEIGHT * 1.3;
+const ONGROUND_LENGTH = RIDE_HEIGHT * 1.3;
 const RAY_DOWN_LENGTH = 3.0;
-const MESH_PLAYER_HEIGHT = RIDE_HEIGHT - 0.075;
-const RIDE_SPRING_STRENGTH = 200;
+
+const RIDE_SPRING_STRENGTH = 400;
 const RIDE_SPRING_DAMPER = 10;
 
 const BODY_FORCE_FEED_BACK_MULTIPLIER = 1.0;
 
-const SPEED_Z = 40;
-const SPEED_X = 10;
-const SKIING_VOLUME_MIN = 0.5;
-const SKIING_VOLUME_MAX = 2.5;
 
 class Player {
 
@@ -95,7 +89,7 @@ class Player {
     m_GoalVel = Vector3.Zero();
 
     //Movements params
-    maxSpeed = 10.0;
+    maxSpeed = 20.0;
     acceleration = 400.0;
     maxAccelForce = 300.0;
     leanFactor = 0.45;
@@ -110,9 +104,10 @@ class Player {
     timeSinceJump = 0.0;
     jumpReady = true;
     isJumping = false;
-
+    
     //Jump params
-    jumpForceFactor = 16.0;
+    jumpForceFactor = 18.0;
+    jumpVector;
     riseGravityFactor = 3.0;
     fallGravityFactor = 8.0;
     lowJumpFactor = 10.0;
@@ -146,10 +141,11 @@ class Player {
 
     constructor(x, y, z) {
 
+        this.jumpVector = Vector3.Up().scale(this.jumpForceFactor)
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
-        this.transform = new MeshBuilder.CreateCapsule("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
+        this.transform = new MeshBuilder.CreateSphere("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
         this.transform.position = new Vector3(this.x, this.y, this.z);
 
         if (DEBUG_FORCES) {
@@ -188,8 +184,8 @@ class Player {
         const mesh1 = await SceneLoader.ImportMeshAsync("", "", meshUrl, GlobalManager.scene);
         this.gameObject = mesh1.meshes[0];
         this.gameObject.name = "playerMesh";
-        this.gameObject.scaling = new Vector3(1, 1, 1);
-        this.gameObject.position = new Vector3(0, -MESH_PLAYER_HEIGHT, 0);
+        this.gameObject.scaling = new Vector3(2, 2, 2);
+        this.gameObject.position = new Vector3(0, 0, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
         if (DEBUG_FORCES) {
@@ -203,7 +199,7 @@ class Player {
         GlobalManager.addShadowCaster(this.gameObject, true);
         GlobalManager.waterMaterial.addToRenderList(mesh1.meshes[1]);
 
-        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: PLAYER_MASS, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.SPHERE, { mass: PLAYER_MASS, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
         this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
 
         //On bloque les rotations avec cette méthode, à vérifier.
@@ -219,21 +215,19 @@ class Player {
         //console.log(this.playerAggregate.body.getGravityFactor());
 
         //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
-        if (USE_FORCES) {
-            this.playerAggregate.body.setLinearDamping(0);
-            this.playerAggregate.body.setAngularDamping(0.05);
-        }
-        else {
-            this.playerAggregate.body.setLinearDamping(0);
-            this.playerAggregate.body.setAngularDamping(0.05);
-        }
+        this.playerAggregate.body.setLinearDamping(0);
+        this.playerAggregate.body.setAngularDamping(0.05);
 
         this.gameObject.parent = this.transform;
         this.animationsGroup = mesh1.animationGroups;
         this.animationsGroup[0].stop();
-        this.idleAnim = GlobalManager.scene.getAnimationGroupByName('Idle');
+        this.idleAnim = this.animationsGroup[0];
+        this.runAnim = this.animationsGroup[0];
+        this.walkAnim = this.animationsGroup[0];
+      /*
+          this.idleAnim = GlobalManager.scene.getAnimationGroupByName('Idle');
         this.runAnim = GlobalManager.scene.getAnimationGroupByName('Running');
-        this.walkAnim = GlobalManager.scene.getAnimationGroupByName('Walking');
+        this.walkAnim = GlobalManager.scene.getAnimationGroupByName('Walking');*/
         this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
 
         this.initParticles();
@@ -424,14 +418,83 @@ class Player {
             if (velocity.length() != 0)
                 this.lookDirection.set(velocity.x, 0, velocity.z);*/
         }
+        
+        this.maintainUpright();
+    }
+
+    maintainUpright() {
+
+        this.calculateTargetRotation();
+       /* const toGoal = this.uprightTargetRot.multiply(this.transform.rotationQuaternion.invert());
+    
+        // Convertir le quaternion en axe et angle
+        const axisAngle = GlobalManager.toAngleAxis(toGoal);
+        const rotAxis = axisAngle.axis;
+        //rotAxis.normalize();
+
+        let angle = axisAngle.angle;
+    
+        // Normaliser l'angle pour qu'il soit entre -PI et PI
+        angle = angle > Math.PI ? angle - 2 * Math.PI : angle;
+        angle = angle < -Math.PI ? angle + 2 * Math.PI : angle;
+
+        let force = rotAxis.scale(angle * PLAYER_MASS * this.uprightSpringStrength).subtract(this.playerAggregate.body.getAngularVelocity().scale(this.uprightSpringDamper) );
 
 
+        GlobalManager.applyTorque(force, this.playerAggregate.body);*/
+//        this.gameObject.lookAt(this.lookDirection);
+       this.gameObject.rotationQuaternion = this.uprightTargetRot;
+    }
 
-        //this.gameObject.setDirection(this.lookDirection);
-        this.gameObject.lookAt(this.lookDirection);
+    calculateTargetRotation() {
+        if (this.didLastRayHit)
+        {
+            this.lastTargetRot = this.uprightTargetRot;
+           /*try
+            {
+                this.platformInitRot = transform.parent.rotation.eulerAngles;
+            }
+            catch
+            {
+                this.platformInitRot = Vector3.Zero();
+            }*/
+        }
+        if (this.rayHit.hitBody == null)
+        {
+            this.didLastRayHit = true;
+        }
+        else
+        {
+            this.didLastRayHit = false;
+        }
 
+        if (this.lookDirection.length() != 0)
+        {
+            Quaternion.FromLookDirectionRHToRef(this.lookDirection, Vector3.UpReadOnly, this.uprightTargetRot);
+            this.lastTargetRot = this.uprightTargetRot.clone();
+            /*try
+            {
+                this.platformInitRot = transform.parent.rotation.eulerAngles;
+            }
+            catch
+            {
+                this.platformInitRot = Vector3.Zero();
+            }*/
+        }
+        else
+        {
+          /*  try
+            {
+                let platformRot = transform.parent.rotation.eulerAngles;
+                let deltaPlatformRot = platformRot - this.platformInitRot;
+                let yAngle = this.lastTargetRot.eulerAngles.y + deltaPlatformRot.y;
+                this.uprightTargetRot = Quaternion.Euler(new Vector3(0, yAngle, 0));
+            }
+            catch
+            {
 
-
+            }*/
+        }
     }
 
     characterMove(delta) {
@@ -503,7 +566,7 @@ class Player {
                             this.playerAggregate.body.disablePreStep = true;
                         });
                     }
-                    this.playerAggregate.body.applyImpulse(Vector3.Up().scale(this.jumpForceFactor), this.playerAggregate.body.transformNode.position); // This does not work very consistently... Jump height is affected by initial y velocity and y position relative to RideHeight... Want to adopt a fancier approach (more like PlayerMovement). A cheat fix to ensure consistency has been issued above...
+                    this.playerAggregate.body.applyImpulse(this.jumpVector, this.playerAggregate.body.transformNode.position); // This does not work very consistently... Jump height is affected by initial y velocity and y position relative to RideHeight... Want to adopt a fancier approach (more like PlayerMovement). A cheat fix to ensure consistency has been issued above...
                     this.timeSinceJumpPressed = this.jumpBuffer; // So as to not activate further jumps, in the case that the player lands before the jump timer surpasses the buffer.
                     this.timeSinceJump = 0.0;
 
