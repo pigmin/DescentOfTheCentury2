@@ -461,25 +461,27 @@ class Player {
     }
 
     characterJump(delta) {
-/*
+
+        let velocity = this.playerAggregate.body.getLinearVelocity();
+
         this.timeSinceJumpPressed += delta;
         this.timeSinceJump += delta;
-        if (this.playerAggregate.body.getLinearVelocity().y < 0) {
+        if (velocity.y < 0) {
             this.shouldMaintainHeight = true;
             this.jumpReady = true;
             if (!this.bOnGround) {
                 // Increase downforce for a sudden plummet.
-                this.playerAggregate.body.applyForce(this.gravitationalForce * (this.fallGravityFactor - 1.0), this.playerAggregate.body.transformNode.position); // Hmm... this feels a bit weird. I want a reactive jump, but I don't want it to dive all the time...
+                this.playerAggregate.body.applyForce(this.gravitationalForce.scale(this.fallGravityFactor - 1.0), this.playerAggregate.body.transformNode.position); // Hmm... this feels a bit weird. I want a reactive jump, but I don't want it to dive all the time...
             }
         }
-        else if (this.playerAggregate.body.getLinearVelocity().y > 0) {
+        else if (velocity.y > 0) {
             if (!this.bOnGround) {
                 if (this.isJumping) {
-                    this.playerAggregate.body.applyForce(this.gravitationalForce * (this.riseGravityFactor - 1.0), this.playerAggregate.body.transformNode.position);
+                    this.playerAggregate.body.applyForce(this.gravitationalForce.scale(this.riseGravityFactor - 1.0), this.playerAggregate.body.transformNode.position);
                 }
                 if (this.jumpInput.length() == 0) {
                     // Impede the jump height to achieve a low jump.
-                    this.playerAggregate.body.applyForce(this.gravitationalForce * (this.lowJumpFactor - 1.0), this.playerAggregate.body.transformNode.position);
+                    this.playerAggregate.body.applyForce(this.gravitationalForce.scale(this.lowJumpFactor - 1.0), this.playerAggregate.body.transformNode.position);
                 }
             }
         }
@@ -490,19 +492,25 @@ class Player {
                     this.jumpReady = false;
                     this.shouldMaintainHeight = false;
                     this.isJumping = true;
-                    _rb.velocity = new Vector3(_rb.velocity.x, 0.0, _rb.velocity.z); // Cheat fix... (see comment below when adding force to rigidbody).
+                    velocity.y = 0;
+                    this.playerAggregate.body.setLinearVelocity(velocity); // Cheat fix... (see comment below when adding force to rigidbody).
                     if (this.rayHit.hitDistance != 0) // i.e. if the ray has hit
                     {
-                        _rb.position = new Vector3(_rb.position.x, _rb.position.y - (this.rayHit.hitDistance - _rideHeight), _rb.position.z);
+                        this.playerAggregate.body.disablePreStep = false;
+                        this.playerAggregate.body.transformNode.position.y = this.playerAggregate.body.transformNode.position.y - (this.rayHit.hitDistance - RIDE_HEIGHT);
+                        GlobalManager.scene.onAfterRenderObservable.addOnce(() => {
+                            // Turn disablePreStep on again for maximum performance
+                            this.playerAggregate.body.disablePreStep = true;
+                        });
                     }
-                    this.playerAggregate.body.applyForce(Vector3.up * _jumpForceFactor, ForceMode.Impulse); // This does not work very consistently... Jump height is affected by initial y velocity and y position relative to RideHeight... Want to adopt a fancier approach (more like PlayerMovement). A cheat fix to ensure consistency has been issued above...
+                    this.playerAggregate.body.applyImpulse(Vector3.Up().scale(this.jumpForceFactor), this.playerAggregate.body.transformNode.position); // This does not work very consistently... Jump height is affected by initial y velocity and y position relative to RideHeight... Want to adopt a fancier approach (more like PlayerMovement). A cheat fix to ensure consistency has been issued above...
                     this.timeSinceJumpPressed = this.jumpBuffer; // So as to not activate further jumps, in the case that the player lands before the jump timer surpasses the buffer.
                     this.timeSinceJump = 0.0;
 
                     //TODO Sound JUMP
                 }
             }
-        }*/
+        }
     }
 
     updateAnimations(bWasWalking) {
