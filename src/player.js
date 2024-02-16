@@ -19,6 +19,7 @@ import { Scalar } from '@babylonjs/core/Maths/math.scalar';
 import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
 import { InputController } from "./inputcontroller";
+import { Tools } from './tools';
 
 import meshUrl from "../assets/models/robot_sphere.glb";
 //import meshUrl from "../assets/models/girl1.glb";
@@ -80,7 +81,7 @@ class Player {
     //Upright params
     lookDirection = Vector3.Zero();
     uprightSpringStrength = 40.0;
-    uprightSpringDamper = 5.0;
+    uprightSpringDamper = 20.0;
 
     //Movements internal
     moveInput = Vector3.Zero();
@@ -428,10 +429,10 @@ class Player {
     maintainUpright() {
 
         this.calculateTargetRotation();
-        const toGoal = GlobalManager.shortestRotationBetweenQuatertions(this.uprightTargetRot, this.playerAggregate.body.transformNode.rotationQuaternion);
+        const toGoal = Tools.shortestRotationBetweenQuatertions(this.uprightTargetRot, this.playerAggregate.body.transformNode.rotationQuaternion);
         
         // Convertir le quaternion en axe et angle
-        const axisAngle = GlobalManager.toAngleAxis(toGoal);
+        const axisAngle = Tools.toAngleAxis(toGoal);
         const rotAxis = axisAngle.axis;
         rotAxis.normalize();
 
@@ -443,7 +444,7 @@ class Player {
         let force = rotAxis.scale(axisAngle.angle * this.uprightSpringStrength).subtract(angularVelocity.scale(this.uprightSpringDamper) );
        
 
-        GlobalManager.applyTorque(force, this.playerAggregate.body);
+        Tools.applyTorque(force, this.playerAggregate.body);
 //        this.gameObject.lookAt(this.lookDirection);
        //Quaternion.SlerpToRef(this.gameObject.rotationQuaternion, this.uprightTargetRot, 0.16, this.gameObject.rotationQuaternion);
     }
@@ -516,7 +517,7 @@ class Player {
 
 
         let maxAccel = this.maxAccelForce * Scalar.SmoothStep(1.5, 1, velDot) * this.maxAccelForceFactor;
-        GlobalManager.clampMagnitudeInPlace(neededAccel, maxAccel);
+        Tools.clampMagnitudeInPlace(neededAccel, maxAccel);
         let force = neededAccel.scaleInPlace(PLAYER_MASS);
         force.multiplyInPlace(this.moveForceScale);
 
