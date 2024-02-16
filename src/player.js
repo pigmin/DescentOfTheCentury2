@@ -147,6 +147,7 @@ class Player {
         this.z = z || 0.0;
         this.transform = new MeshBuilder.CreateSphere("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
         this.transform.position = new Vector3(this.x, this.y, this.z);
+        this.transform.rotationQuaternion = Quaternion.Identity();
 
         if (DEBUG_FORCES) {
             let debugMat = new StandardMaterial("debugMat");
@@ -186,7 +187,7 @@ class Player {
         this.gameObject.name = "playerMesh";
         this.gameObject.scaling = new Vector3(2, 2, 2);
         this.gameObject.position = new Vector3(0, 0, 0);
-        this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
+        //this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
         if (DEBUG_FORCES) {
             mesh1.meshes[0].visibility = 0;
@@ -203,12 +204,12 @@ class Player {
         this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
 
         //On bloque les rotations avec cette méthode, à vérifier.
-        this.playerAggregate.body.setMassProperties({
+        /*this.playerAggregate.body.setMassProperties({
             inertia: new Vector3(0, 0, 0),  // 0, 0, 0 ...??
-            centerOfMass: new Vector3(0, PLAYER_HEIGHT / 2, 0),
+            centerOfMass: new Vector3(0, 0, 0),
             mass: PLAYER_MASS,
-            //inertiaOrientation: new Quaternion(0, 0, 0, 0)
-        });
+            //inertiaOrientation: Quaternion.Identity()
+        });*/
 
         this.gravitationalForce = GlobalManager.gravityVector.scale(PLAYER_MASS);
 
@@ -369,7 +370,7 @@ class Player {
 
         //On applique tout suivant l'orientation de la camera
         if (ADJUST_INPUT_TO_CAMERA)
-            this.applyCameraDirectionTomoveInputection();
+            this.applyCameraDirectionToInput();
 
         let rayHitGround = this.raycastToGround();
 
@@ -411,13 +412,15 @@ class Player {
             this.maintainHeight();
         }
 
+        this.lookDirection.copyFrom(this.moveInput);
         if (this.bWalking) {
-            this.lookDirection.copyFrom(this.moveInput);
+//            this.lookDirection.copyFrom(this.moveInput);
         /*    let velocity = this.playerAggregate.body.getLinearVelocity().normalizeToNew();
             velocity.y = 0;
             if (velocity.length() != 0)
                 this.lookDirection.set(velocity.x, 0, velocity.z);*/
         }
+        
         
         this.maintainUpright();
     }
@@ -425,25 +428,24 @@ class Player {
     maintainUpright() {
 
         this.calculateTargetRotation();
-       /* const toGoal = this.uprightTargetRot.multiply(this.transform.rotationQuaternion.invert());
-    
+        const toGoal = GlobalManager.shortestRotationBetweenQuatertions(this.uprightTargetRot, this.playerAggregate.body.transformNode.rotationQuaternion);
+        
         // Convertir le quaternion en axe et angle
         const axisAngle = GlobalManager.toAngleAxis(toGoal);
         const rotAxis = axisAngle.axis;
-        //rotAxis.normalize();
+        rotAxis.normalize();
 
-        let angle = axisAngle.angle;
-    
+       
         // Normaliser l'angle pour qu'il soit entre -PI et PI
-        angle = angle > Math.PI ? angle - 2 * Math.PI : angle;
-        angle = angle < -Math.PI ? angle + 2 * Math.PI : angle;
+        //angle = angle > Math.PI ? angle - 2 * Math.PI : angle;
+        //angle = angle < -Math.PI ? angle + 2 * Math.PI : angle;
+        let angularVelocity = this.playerAggregate.body.getAngularVelocity();
+        let force = rotAxis.scale(axisAngle.angle * this.uprightSpringStrength).subtract(angularVelocity.scale(this.uprightSpringDamper) );
+       
 
-        let force = rotAxis.scale(angle * PLAYER_MASS * this.uprightSpringStrength).subtract(this.playerAggregate.body.getAngularVelocity().scale(this.uprightSpringDamper) );
-
-
-        GlobalManager.applyTorque(force, this.playerAggregate.body);*/
+        GlobalManager.applyTorque(force, this.playerAggregate.body);
 //        this.gameObject.lookAt(this.lookDirection);
-       this.gameObject.rotationQuaternion = this.uprightTargetRot;
+       //Quaternion.SlerpToRef(this.gameObject.rotationQuaternion, this.uprightTargetRot, 0.16, this.gameObject.rotationQuaternion);
     }
 
     calculateTargetRotation() {
@@ -518,7 +520,9 @@ class Player {
         let force = neededAccel.scaleInPlace(PLAYER_MASS);
         force.multiplyInPlace(this.moveForceScale);
 
-        this.playerAggregate.body.applyForce(force, this.playerAggregate.body.transformNode.position);
+        let posForce = this.playerAggregate.body.transformNode.position.clone();
+       // posForce.y += this.leanFactor;
+        this.playerAggregate.body.applyForce(force, posForce);
         //        this.playerAggregate.body.applyForceAtPosition(force, transform.position + new Vector3(0f, transform.localScale.y * _leanFactor, 0f)); // Using AddForceAtPosition in order to both move the player and cause the play to lean in the direction of input.
 
     }
@@ -731,7 +735,7 @@ class Player {
         return Math.atan(Math.abs(v.y / Math.sqrt(v.x * v.x + v.z * v.z)));
     }
 
-    applyCameraDirectionTomoveInputection() {
+    applyCameraDirectionToInput() {
 
         if (this.moveInput.length() != 0) {
             let forwardCamera = this.getForwardVector(GlobalManager.scene.activeCamera);

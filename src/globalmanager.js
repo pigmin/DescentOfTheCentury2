@@ -14,19 +14,19 @@ export const States = Object.freeze({
     STATE_LEVEL_READY: 55,
     STATE_RUNNING: 60,
     STATE_PAUSE: 70,
-    STATE_BUT_A : 75,
-    STATE_BUT_B : 76,
+    STATE_BUT_A: 75,
+    STATE_BUT_B: 76,
     STATE_LOOSE: 80,
     STATE_GAME_OVER: 90,
     STATE_END: 100,
 });
 
 export const PhysMasks = Object.freeze({
-    PHYS_MASK_PLAYER : 1,
-    PHYS_MASK_GROUND : 2,
-    PHYS_MASK_CURLING : 4,
-    PHYS_MASK_NET : 8,
-    PHYS_MASK_ENNEMIES : 16,
+    PHYS_MASK_PLAYER: 1,
+    PHYS_MASK_GROUND: 2,
+    PHYS_MASK_CURLING: 4,
+    PHYS_MASK_NET: 8,
+    PHYS_MASK_ENNEMIES: 16,
 
     PHYS_MASK_ALL: 0xffffffff
 });
@@ -34,19 +34,19 @@ export const PhysMasks = Object.freeze({
 class GlobalManager {
 
     canvas;
-    engine
+    engine;
     scene;
     gameCamera;
     debugCamera;
     gizmoManager;
-    gravityVector = new Vector3(0, -9.81, 0)
+    gravityVector = new Vector3(0, -9.81, 0);
 
     gameState = States.STATE_NONE;
     bPause = false;
 
     shadowGenerators = [];
     environment;
-    
+
     water;
     waterMaterial;
 
@@ -69,7 +69,7 @@ class GlobalManager {
     }
 
     update(delta) {
-        
+
     }
 
     addShadowGenerator(shad) {
@@ -79,7 +79,7 @@ class GlobalManager {
     addShadowCaster(object, bChilds) {
         bChilds = bChilds || false;
         for (let shad of this.shadowGenerators) {
-            shad.addShadowCaster(object, bChilds)
+            shad.addShadowCaster(object, bChilds);
         }
     }
 
@@ -98,50 +98,75 @@ class GlobalManager {
     clampMagnitudeInPlace(vector, maxLength) {
         // Calculer la longueur (magnitude) actuelle du vecteur
         let currentLength = vector.length();
-    
+
         // Si la longueur est déjà inférieure ou égale à maxLength, renvoyer le vecteur initial
         if (currentLength <= maxLength) {
             return vector;
         }
-    
+
         // Retourner le vecteur redimensionné
-        vector.scaleInPlace(maxLength / currentLength)
+        vector.scaleInPlace(maxLength / currentLength);
     }
 
     Quaternion_LookRotation(target, up) {
-        
+
         var right = Vector3.Cross(up, target).normalize();
         var correctedUp = Vector3.Cross(target, right).normalize();
-    
+
         var mat = Matrix.FromValues(
             right.x, correctedUp.x, target.x, 0,
             right.y, correctedUp.y, target.y, 0,
             right.z, correctedUp.z, target.z, 0,
             0, 0, 0, 1
         );
-    
+
         var quaternion = new Quaternion();
         quaternion.fromRotationMatrix(mat);
         return quaternion;
     }
-    
-    getTorqueToAlignVector(mass, fromVector, toVector) {
+
+    shortestRotationBetweenQuatertions(q1, q2) {
+        // Normalize the quaternions
+        q1.normalize();
+        q2.normalize();
+
+        // Calculate the inverse of the first quaternion
+        let q1Inverse;
+        if (Quaternion.Dot(q1, q2) < 0)
+            q1Inverse = q1.scale(-1);
+        else
+            q1Inverse = q1.clone();
+
+        q1Inverse.conjugateInPlace();
+        q1Inverse.normalize();
+
+        // Compute the relative rotation
+        let qRel = q2.multiply(q1Inverse);
+
+        // Normalize the result to get the shortest rotation
+        qRel.normalize();
+
+        return qRel;
+    }
+
+    getTorqueToAlignVectors(mass, fromVector, toVector) {
         // Normaliser les vecteurs
         fromVector.normalize();
         toVector.normalize();
-    
+
         // Calculer l'axe de rotation et l'angle
         const axis = Vector3.Cross(fromVector, toVector).normalize();
         const angle = Math.acos(Vector3.Dot(fromVector, toVector));
-    
+
         // Calculer le couple nécessaire
         const torque = axis.scale(angle * mass);
-    
+
         // Appliquer le couple
         return torque;
     }
 
     toAngleAxis(quaternion) {
+        quaternion.normalize();
         let angle = 2 * Math.acos(quaternion.w);
         let s = Math.sqrt(1 - quaternion.w * quaternion.w); // Sinon, l'axe n'est pas normalisé
         let axis;
@@ -151,33 +176,32 @@ class GlobalManager {
         } else {
             axis = new Vector3(quaternion.x / s, quaternion.y / s, quaternion.z / s); // L'axe normalisé
         }
-        return {angle, axis};
+        return { angle: angle, axis : axis };
     }
 
-    getTorqueToAlignQuaternion(mass, fromQuaternion, toQuaternion) {
+    getTorqueToAlignQuaternions(mass, fromQuaternion, toQuaternion) {
         // Calculer le quaternion de rotation nécessaire
         const requiredRotation = toQuaternion.multiply(fromQuaternion.invert());
-    
+
         // Convertir le quaternion en axe et angle
         const axisAngle = this.toAngleAxis(requiredRotation);
         const axis = axisAngle.axis;
         let angle = axisAngle.angle;
-    
+
         // Normaliser l'angle pour qu'il soit entre -PI et PI
         angle = angle > Math.PI ? angle - 2 * Math.PI : angle;
         angle = angle < -Math.PI ? angle + 2 * Math.PI : angle;
-    
+
         // Calculer le couple en fonction de l'axe et de l'angle
         // La magnitude du couple peut être ajustée en fonction des besoins de votre simulation
         const torque = axis.scale(angle * mass);
-    
+
         // Appliquer le couple
         return torque;
     }
 
     applyTorque(torqueWorld, body) {
-        
-        //var torqueWorld = scene.getPhysicsEngine().getPhysicsPlugin().world;
+
         let massProps = body.getMassProperties();
         let worldFromInertia = massProps.inertiaOrientation.multiply(body.transformNode.absoluteRotationQuaternion);
         let inertiaFromWorld = worldFromInertia.conjugate();
@@ -186,8 +210,10 @@ class GlobalManager {
         let newAV = body.getAngularVelocity().add(impWorld.scale(this.scene.getPhysicsEngine().getTimeStep()));
         body.setAngularVelocity(newAV);
     }
+
+
 }
 
 //Destructuring on ne prends que la propriété statique instance
-const {instance} = GlobalManager;
+const { instance } = GlobalManager;
 export { instance as GlobalManager };
