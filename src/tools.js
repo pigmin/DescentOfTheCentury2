@@ -1,4 +1,5 @@
 import { Vector3, Matrix, Quaternion } from "@babylonjs/core/Maths/math.vector";
+import { GlobalManager } from './globalmanager';
 
 
 class Tools {
@@ -78,6 +79,21 @@ class Tools {
         return qRel;
     }
 
+  
+    toAngleAxis(quaternion) {
+        quaternion.normalize();
+        let angle = 2 * Math.acos(quaternion.w);
+        let s = Math.sqrt(1 - quaternion.w * quaternion.w); // Sinon, l'axe n'est pas normalisé
+        let axis;
+
+        if (s < 0.001) { // Si s est proche de zéro, l'angle est proche de 0 ou 180 degrés
+            axis = new Vector3(quaternion.x, quaternion.y, quaternion.z); // L'axe n'est pas important
+        } else {
+            axis = new Vector3(quaternion.x / s, quaternion.y / s, quaternion.z / s); // L'axe normalisé
+        }
+        return { angle: angle, axis : axis };
+    }
+
     getTorqueToAlignVectors(mass, fromVector, toVector) {
         // Normaliser les vecteurs
         fromVector.normalize();
@@ -92,20 +108,6 @@ class Tools {
 
         // Appliquer le couple
         return torque;
-    }
-
-    toAngleAxis(quaternion) {
-        quaternion.normalize();
-        let angle = 2 * Math.acos(quaternion.w);
-        let s = Math.sqrt(1 - quaternion.w * quaternion.w); // Sinon, l'axe n'est pas normalisé
-        let axis;
-
-        if (s < 0.001) { // Si s est proche de zéro, l'angle est proche de 0 ou 180 degrés
-            axis = new Vector3(quaternion.x, quaternion.y, quaternion.z); // L'axe n'est pas important
-        } else {
-            axis = new Vector3(quaternion.x / s, quaternion.y / s, quaternion.z / s); // L'axe normalisé
-        }
-        return { angle: angle, axis : axis };
     }
 
     getTorqueToAlignQuaternions(mass, fromQuaternion, toQuaternion) {
@@ -136,7 +138,7 @@ class Tools {
         let inertiaFromWorld = worldFromInertia.conjugate();
         let impLocal = torqueWorld.applyRotationQuaternion(inertiaFromWorld);
         let impWorld = impLocal.multiply(massProps.inertia).applyRotationQuaternion(worldFromInertia);
-        let newAV = body.getAngularVelocity().add(impWorld.scale(this.scene.getPhysicsEngine().getTimeStep()));
+        let newAV = body.getAngularVelocity().add(impWorld.scale(GlobalManager.scene.getPhysicsEngine().getTimeStep()));
         body.setAngularVelocity(newAV);
         console.log(newAV);
     }

@@ -26,13 +26,14 @@ import meshUrl from "../assets/models/robot_sphere.glb";
 import dustParticleUrl from "../assets/textures/dust.png";
 
 
+const DEBUG_3D = false;
 const DEBUG_FORCES = false;
 const ADJUST_INPUT_TO_CAMERA = true;
 
 
 const PLAYER_MASS = 1;
 const PLAYER_RADIUS = 0.3;
-const PLAYER_HEIGHT = 2.0;
+const PLAYER_HEIGHT = 1.0;
 const RIDE_HEIGHT = 2.0;
 const RIDE_CENTER_OFFSET = RIDE_HEIGHT / 2.0;
 const ONGROUND_LENGTH = RIDE_HEIGHT * 1.3;
@@ -79,9 +80,9 @@ class Player {
     didLastRayHit = false;
 
     //Upright params
-    lookDirection = Vector3.Zero();
-    uprightSpringStrength = 40.0;
-    uprightSpringDamper = 20.0;
+    lookDirection = Vector3.Forward();
+    uprightSpringStrength = 140.0;
+    uprightSpringDamper = 15.0;
 
     //Movements internal
     moveInput = Vector3.Zero();
@@ -146,9 +147,10 @@ class Player {
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
-        this.transform = new MeshBuilder.CreateSphere("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
+        this.transform = new MeshBuilder.CreateCapsule("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
         this.transform.position = new Vector3(this.x, this.y, this.z);
-        this.transform.rotationQuaternion = Quaternion.Identity();
+        Quaternion.FromLookDirectionRHToRef(this.lookDirection, Vector3.UpReadOnly, this.uprightTargetRot);
+        this.transform.rotationQuaternion = this.uprightTargetRot.clone();
 
         if (DEBUG_FORCES) {
             let debugMat = new StandardMaterial("debugMat");
@@ -201,7 +203,7 @@ class Player {
         GlobalManager.addShadowCaster(this.gameObject, true);
         GlobalManager.waterMaterial.addToRenderList(mesh1.meshes[1]);
 
-        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.SPHERE, { mass: PLAYER_MASS, friction: 0.5, restitution: 0.1 }, GlobalManager.scene);
+        this.playerAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: PLAYER_MASS, friction: 0.2, restitution: 0.2 }, GlobalManager.scene);
         this.playerAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
 
         //On bloque les rotations avec cette méthode, à vérifier.
@@ -414,6 +416,10 @@ class Player {
         }
 
         this.lookDirection.copyFrom(this.moveInput);
+        if (DEBUG_3D) {
+            this.lookDirection = Vector3.Up();
+            
+        }
         if (this.bWalking) {
 //            this.lookDirection.copyFrom(this.moveInput);
         /*    let velocity = this.playerAggregate.body.getLinearVelocity().normalizeToNew();
@@ -429,14 +435,14 @@ class Player {
     maintainUpright() {
 
         this.calculateTargetRotation();
-        const toGoal = Tools.shortestRotationBetweenQuatertions(this.uprightTargetRot, this.playerAggregate.body.transformNode.rotationQuaternion);
+        const toGoal = Tools.shortestRotationBetweenQuatertions(this.uprightTargetRot, this.transform.rotationQuaternion);
         
         // Convertir le quaternion en axe et angle
         const axisAngle = Tools.toAngleAxis(toGoal);
         const rotAxis = axisAngle.axis;
         rotAxis.normalize();
 
-       
+       console.log(axisAngle);
         // Normaliser l'angle pour qu'il soit entre -PI et PI
         //angle = angle > Math.PI ? angle - 2 * Math.PI : angle;
         //angle = angle < -Math.PI ? angle + 2 * Math.PI : angle;

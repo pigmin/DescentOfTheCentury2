@@ -33,7 +33,7 @@ const MAIN_SCENE_ROT_X = 0;
 const PLAYER_Z_BASE = 14;
 
 const PLAYER_START = new Vector3(71.6, -26, -10.6);
-const CAMERA_START_POS = new Vector3(50, -20, -14);
+const CAMERA_START_POS = new Vector3(50, -20, -20);
 
 
 class Game {
@@ -186,7 +186,7 @@ class Game {
         GlobalManager.gameCamera.heightOffset = 3;
         GlobalManager.gameCamera.lowerHeightOffsetLimit = 1;
         GlobalManager.gameCamera.upperHeightOffsetLimit = 10;
-        GlobalManager.gameCamera.radius = -15;
+        GlobalManager.gameCamera.radius = 15;
         GlobalManager.gameCamera.lowerRadiusLimit = -25;
         GlobalManager.gameCamera.upperRadiusLimit = -4;
         GlobalManager.gameCamera.maxCameraSpeed = 20;
